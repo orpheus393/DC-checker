@@ -1,12 +1,12 @@
-# GitHub Actions 워크플로우: 15분마다 스크립트를 실행하여 새 글을 확인합니다.
+# GitHub Actions 워크플로우: 5분마다 스크립트를 실행하여 새 글을 확인합니다.
 
 name: Check for new posts
 
 on:
   workflow_dispatch: # 수동으로 실행할 수 있도록 함
   schedule:
-    # 15분마다 실행 (Cron 표현식)
-    - cron: '*/15 * * * *'
+    # 15분 -> 5분으로 변경 (GitHub Actions의 최소 실행 간격)
+    - cron: '*/5 * * * *'
 
 jobs:
   check:
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # 원하는 파이썬 버전
+          python-version: '3.10' 
 
       # 3. 필요한 라이브러리를 설치합니다.
       - name: Install dependencies
@@ -32,6 +32,11 @@ jobs:
       # 4. 메인 스크립트를 실행합니다.
       - name: Run checker script
         env:
-          # GitHub Secrets에 저장된 웹훅 URL을 환경 변수로 주입합니다.
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # GitHub Secrets에 저장된 이메일 정보를 환경 변수로 주입합니다.
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
         run: python main.py
+

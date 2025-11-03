@@ -93,87 +93,97 @@ def fetch_recent_posts():
 
 def load_notified_posts():
     """이미 알림을 보낸 게시글 ID 목록을 파일에서 불러옵니다."""
-# ... (이하 코드는 이전과 동일) ...
+    # --- 여기가 수정된 부분입니다 (들여쓰기 오류 해결) ---
     if not os.path.exists(NOTIFIED_POSTS_FILE):
-# ... (이하 코드는 이전과 동일) ...
+        return set() # 이 줄이 빠져있었습니다.
     
     with open(NOTIFIED_POSTS_FILE, 'r', encoding='utf-8') as f:
-# ... (이하 코드는 이전과 동일) ...
+        return set(line.strip() for line in f) # 이 줄도 빠져있었습니다.
 
 def save_notified_post(post_id):
     """알림을 보낸 게시글 ID를 파일에 추가합니다."""
-# ... (이하 코드는 이전과 동일) ...
-        f.write(post_id + '\n')
+    # --- 여기도 수정되었습니다 ---
+    with open(NOTIFIED_POSTS_FILE, 'a', encoding='utf-8') as f:
+        f.write(post_id + '\n') # 이 줄이 빠져있었습니다.
 
 def send_email_notification(post):
     """이메일로 알림을 보냅니다."""
-# ... (이하 코드는 이전과 동일) ...
     if not all([SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, SENDER_PASSWORD, RECEIVER_EMAIL]):
-# ... (이하 코드는 이전과 동일) ...
+        print("알림: 이메일 설정(SMTP_SERVER, PORT, SENDER_EMAIL, SENDER_PASSWORD, RECEIVER_EMAIL)이 완료되지 않았습니다. 콘솔에만 출력합니다.")
         return
 
     try:
-# ... (이하 코드는 이전과 동일) ...
+        # 이메일 제목과 본문 생성
         subject = f"[DC-checker] 새 글 알림: {post['title']}"
-# ... (이하 코드는 이전과 동일) ...
+        body = f"키워드를 포함한 새 글이 올라왔습니다.\n\n"
+        body += f"제목: {post['title']}\n"
         body += f"링크: {post['url']}\n"
 
-# ... (이하 코드는 이전과 동일) ...
+        # MIMEText 객체 생성
         msg = MIMEText(body, 'plain', 'utf-8')
-# ... (이하 코드는 이전과 동일) ...
+        msg['Subject'] = Header(subject, 'utf-8')
+        msg['From'] = SENDER_EMAIL
         msg['To'] = RECEIVER_EMAIL
 
-# ... (이하 코드는 이전과 동일) ...
+        # SMTP 서버 연결 및 로그인
         print(f"SMTP 서버({SMTP_SERVER}:{SMTP_PORT})에 연결 중...")
-# ... (이하 코드는 이전과 동일) ...
+        
+        # --- 여기가 수정된 부분입니다 (이메일 전송 버그 수정) ---
+        # smtplib.SMTP(int(SMTP_PORT)) -> smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT))
+        with smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT)) as s:
             s.starttls() # TLS 암호화 시작
-# ... (이하 코드는 이전과 동일) ...
+            s.login(SENDER_EMAIL, SENDER_PASSWORD)
             s.sendmail(SENDER_EMAIL, [RECEIVER_EMAIL], msg.as_string())
-# ... (이하 코드는 이전과 동일) ...
+        
         print(f"알림: 이메일({RECEIVER_EMAIL})로 알림을 성공적으로 보냈습니다. (ID: {post['id']})")
 
     except smtplib.SMTPAuthenticationError:
-# ... (이하 코드는 이전과 동일) ...
+        print(f"오류: 이메일 로그인에 실패했습니다. (ID: {post['id']})")
         print("SENDER_EMAIL 또는 SENDER_PASSWORD(앱 비밀번호)가 올바른지 확인하세요.")
-# ... (이하 코드는 이전과 동일) ...
+    except Exception as e:
         print(f"오류: 이메일 전송에 실패했습니다 - {e}")
 
 
 def main():
     print("--- DC-checker 시작 ---")
     
-# ... (이하 코드는 이전과 동일) ...
+    # 1. 갤러리에서 최신 글 가져오기
     recent_posts = fetch_recent_posts()
-# ... (이하 코드는 이전과 동일) ...
+    if not recent_posts:
+        print("게시글을 가져오지 못했거나 오류가 발생했습니다.")
         print("--- DC-checker 종료 ---")
         return
 
-# ... (이하 코드는 이전과 동일) ...
+    # 2. 이미 알림 보낸 글 목록 가져오기
     notified_ids = load_notified_posts()
     
-# ... (이하 코드는 이전과 동일) ...
+    # 3. 새 글 확인
     new_posts_found = []
     
     for post in recent_posts:
-# ... (이하 코드는 이전과 동일) ...
+        # 키워드가 포함되어 있고, 아직 알림 보낸 적 없는 글인지 확인
+        if post['id'] not in notified_ids:
             for keyword in TARGET_KEYWORDS:
-# ... (이하 코드는 이전과 동일) ...
+                if keyword in post['title']:
                     new_posts_found.append(post)
-                    break 
+                    break # 이 게시글은 이미 찾았으므로 다음 게시글로 넘어감
 
-# ... (이하 코드는 이전과 동일) ...
+    # 4. 알림 보내기
     if not new_posts_found:
-# ... (이하 코드는 이전과 동일) ...
+        print("새 글을 찾지 못했습니다.")
     else:
         for post in new_posts_found:
-# ... (이하 코드는 이전과 동일) ...
+            print(f"발견! -> ID: {post['id']}, 제목: {post['title']}")
             # 이메일 알림 보내기
             send_email_notification(post)
-# ... (이하 코드는 이전과 동일) ...
+            # 알림 보낸 목록에 추가
+            save_notified_post(post['id'])
+            # 서버에 부담을 주지 않기 위해 약간의 지연
             time.sleep(1) 
 
     print("--- DC-checker 종료 ---")
 
 if __name__ == "__main__":
     main()
+
 

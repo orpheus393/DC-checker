@@ -1,0 +1,26 @@
+Python 관련 무시 파일
+
+pycache/
+*.py[cod]
+*$py.class
+
+가상 환경
+
+venv/
+.venv/
+env/
+.env
+
+운영체제 파일
+
+.DS_Store
+Thumbs.db
+
+알림 보낸 목록 (로컬 테스트용이므로 git에 포함하지 않음)
+
+notified_posts.txt
+
+IDE 설정 파일
+
+.vscode/
+.idea/

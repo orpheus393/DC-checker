@@ -25,13 +25,13 @@ jobs:
         with:
           python-version: '3.10'
           
-      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 '현재 폴더'(.)에 다운로드
+      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 '절대 경로'에 다운로드
       - name: Download previous post list artifact
         uses: actions/download-artifact@v4
         with:
           name: notified-posts-artifact
-          # [수정됨] GITHUB_WORKSPACE (절대 경로) 대신 '현재 폴더'(.)를 사용
-          path: .
+          # [수정됨] GITHUB_WORKSPACE (절대 경로)를 사용
+          path: ${{ github.workspace }}
         continue-on-error: true # 처음 실행이라 파일이 없어도 에러 내지 않고 계속 진행
 
       # (4) requirements.txt 에 있는 라이브러리 설치하기
@@ -40,20 +40,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # (5) 파이썬 스크립트 실행하기
+      # (5) [수정됨] 파이썬 스크립트 실행 (가장 중요한 수정)
       - name: Run checker script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # [수정됨] 'GITHUB_WORKSPACE' 변수를 스크립트에 명시적으로 전달
+          GITHUB_WORKSPACE: ${{ github.workspace }}
         run: python main.py
         
-      # (6) [수정됨] 스크립트가 '현재 폴더'(.)에 저장한 '알림 목록' 파일을 업로드
+      # (6) [수정됨] 스크립트가 '절대 경로'에 저장한 '알림 목록' 파일을 업로드
       - name: Upload new post list artifact
         uses: actions/upload-artifact@v4
         with:
           name: notified-posts-artifact
-          # [수정됨] GITHUB_WORKSPACE (절대 경로) 대신 '현재 폴더'에 있는 파일을 지정
-          path: notified_posts.txt
+          # [수정됨] GITHUB_WORKSPACE (절대 경로)에 있는 파일을 지정
+          path: ${{ github.workspace }}/notified_posts.txt
           if-no-files-found: error # [수정됨] 만약 파일을 못찾으면 '에러'를 내서 즉시 확인
           retention-days: 7 # 7일간 보관
 

@@ -6,7 +6,7 @@ on:
   workflow_dispatch: # 수동으로 실행할 수 있도록 함
   schedule:
     # 5분마다 실행 (GitHub Actions의 최소 실행 간격)
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
 
 jobs:
   check:

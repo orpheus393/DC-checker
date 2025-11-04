@@ -32,7 +32,7 @@ python main.py
 
 ⚙️ 자동화 (GitHub Actions)
 
-이 저장소에는 .github/workflows/main.yml 파일이 포함되어 있습니다. 이 파일은 10분마다 이 스크립트를 자동으로 실행하도록 설정되어 있습니다.
+이 저장소에는 .github/workflows/main.yml 파일이 포함되어 있습니다. 이 파일은 60분마다 이 스크립트를 자동으로 실행하도록 설정되어 있습니다.
 
 텔레그램 알림을 받으려면 GitHub 저장소에 Secrets를 등록해야 합니다.
 

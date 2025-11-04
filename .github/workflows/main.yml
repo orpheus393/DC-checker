@@ -6,7 +6,7 @@ name: Check for new posts
 on:
   workflow_dispatch: # (A) 수동 실행: GitHub Actions 탭에서 'Run workflow' 버튼으로 수동 실행 가능
   schedule:
-    # (B) 자동 실행: 5분마다 자동으로 실행 (GitHub Actions의 최소 간격)
+    # (B) 자동 실행: 10분마다 실행
     - cron: '*/10 * * * *'
 
 # 2. 어떤 작업을 수행할 것인지 설정
@@ -24,19 +24,36 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          
+      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 정확한 경로에 다운로드
+      - name: Download previous post list artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: notified-posts-artifact
+          # [수정됨] GITHUB_WORKSPACE (코드 최상위 폴더)에 다운로드
+          path: ${{ github.workspace }}
+        continue-on-error: true # 처음 실행이라 파일이 없어도 에러 내지 않고 계속 진행
 
-      # (3) requirements.txt 에 있는 라이브러리 설치하기
+      # (4) requirements.txt 에 있는 라이브러리 설치하기
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # (4) 파이썬 스크립트 실행하기 (가장 중요!)
+      # (5) 파이썬 스크립트 실행하기
       - name: Run checker script
-        # 텔레그램 봇 토큰과 채팅 ID를 GitHub Secrets에서 읽어와
-        # 파이썬 스크립트가 os.environ.get()으로 읽을 수 있도록 '환경 변수'로 주입
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
+        
+      # (6) [수정됨] 스크립트가 새로 저장한 '알림 목록' 파일을 정확한 경로에서 업로드
+      - name: Upload new post list artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notified-posts-artifact
+          # [수정됨] GITHUB_WORKSPACE (코드 최상위 폴더)에 있는 파일을 지정
+          path: ${{ github.workspace }}/notified_posts.txt
+          if-no-files-found: ignore # 파일이 없어도 무시 (오류X)
+          retention-days: 7 # 7일간 보관
 

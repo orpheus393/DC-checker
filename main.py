@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=cartoon"
 
 # 2. 찾고 싶은 키워드 목록
-TARGET_KEYWORDS = ["카라키다가", "고서 생활"] # 원하는 키워드로 수정하세요
+TARGET_KEYWORDS = ["카라키다가", "고서 생활" ,"아이리스아웃"] # 원하는 키워드로 수정하세요
 
 # 3. (추가) 한 번에 확인할 페이지 수 (글 리젠이 빠르므로 1~3 페이지 확인)
 PAGES_TO_SCAN = 3 

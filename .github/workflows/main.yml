@@ -1,42 +1,42 @@
-# GitHub Actions 워크플로우: 5분마다 스크립트를 실행하여 새 글을 확인합니다.
-
+# .github/workflows/main.yml
+# GitHub Actions 워크플로우 이름
 name: Check for new posts
 
+# 1. 언제 이 스크립트를 실행할 것인지 설정
 on:
-  workflow_dispatch: # 수동으로 실행할 수 있도록 함
+  workflow_dispatch: # (A) 수동 실행: GitHub Actions 탭에서 'Run workflow' 버튼으로 수동 실행 가능
   schedule:
-    # 15분 -> 5분으로 변경 (GitHub Actions의 최소 실행 간격)
-    - cron: '*/5 * * * *'
+    # (B) 자동 실행: 5분마다 자동으로 실행 (GitHub Actions의 최소 간격)
+    - cron: '*/10 * * * *'
 
+# 2. 어떤 작업을 수행할 것인지 설정
 jobs:
   check:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-latest # 최신 우분투 리눅스 환경에서 실행
+
     steps:
-      # 1. 저장소 코드를 가져옵니다.
+      # (1) 저장소의 코드를 실행 환경(runner)으로 가져오기
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Python 환경을 설정합니다.
+      # (2) 파이썬 3.10 버전 설치하기
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' 
+          python-version: '3.10'
 
-      # 3. 필요한 라이브러리를 설치합니다.
+      # (3) requirements.txt 에 있는 라이브러리 설치하기
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 4. 메인 스크립트를 실행합니다.
+      # (4) 파이썬 스크립트 실행하기 (가장 중요!)
       - name: Run checker script
+        # 텔레그램 봇 토큰과 채팅 ID를 GitHub Secrets에서 읽어와
+        # 파이썬 스크립트가 os.environ.get()으로 읽을 수 있도록 '환경 변수'로 주입
         env:
-          # GitHub Secrets에 저장된 이메일 정보를 환경 변수로 주입합니다.
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
-          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
 

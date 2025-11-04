@@ -6,15 +6,15 @@ from bs4 import BeautifulSoup
 # --- 설정 ---
 
 # 1. 모니터링할 갤러리 URL (기본 URL, &page= 제외)
-TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=cartoon"
+# '만화 갤러리 6'의 '개념글' 게시판으로 변경
+TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=comic_new6&exception_mode=recommend"
 
-# 2. 찾고 싶은 키워드 목록
-TARGET_KEYWORDS = ["카라키다가", "고서 생활" ,"에마쨩과"] # 원하는 키워드로 수정하세요
+# 2. (제거됨) 키워드 설정이 필요 없습니다.
 
-# 3. (추가) 한 번에 확인할 페이지 수 (글 리젠이 빠르므로 1~3 페이지 확인)
-PAGES_TO_SCAN = 3 
+# 3. (추가) 한 번에 확인할 페이지 수 (개념글은 리젠이 느리므로 1~2페이지만 확인)
+PAGES_TO_SCAN = 1 
 
-# 4. (중요) 게시글 제목을 포함하는 요소의 CSS 선택자
+# 4. (중요) 게시글 제목을 포함하는 요소의 CSS 선택자 (개념글도 선택자가 동일함)
 CSS_SELECTOR_FOR_POSTS = "td.gall_tit a"
 
 # 5. 이미 알림을 보낸 게시글을 기록할 파일
@@ -40,6 +40,7 @@ def fetch_recent_posts():
     try:
         # 1페이지부터 PAGES_TO_SCAN 페이지까지 순회
         for page in range(1, PAGES_TO_SCAN + 1):
+            # 개념글 URL에 페이지 파라미터를 추가합니다.
             url = f"{TARGET_GALLERY_URL}&page={page}"
             print(f"  - {page}페이지 확인 중...")
             
@@ -106,7 +107,7 @@ def send_telegram_notification(post):
 
     try:
         # 텔레그램 메시지 생성
-        message = f"📢 **[DC-checker] 새 글 알림**\n\n"
+        message = f"📢 **[DC-checker] 새 글 알림 (개념글)**\n\n" # 알림 제목에 (개념글) 추가
         message += f"**제목:** {post['title']}\n"
         message += f"**링크:** {post['url']}\n"
 
@@ -148,16 +149,15 @@ def main():
     # 2. 이미 알림 보낸 글 목록 가져오기
     notified_ids = load_notified_posts()
     
-    # 3. 새 글 확인
+    # --- 여기가 수정된 부분입니다 ---
+    # 3. 새 글 확인 (키워드 없이 모든 새 개념글)
     new_posts_found = []
     
     for post in recent_posts:
-        # 키워드가 포함되어 있고, 아직 알림 보낸 적 없는 글인지 확인
+        # 키워드 검사 없이, 아직 알림 보낸 적 없는 글인지 확인
         if post['id'] not in notified_ids:
-            for keyword in TARGET_KEYWORDS:
-                if keyword in post['title']:
-                    new_posts_found.append(post)
-                    break # 이 게시글은 이미 찾았으므로 다음 게시글로 넘어감
+            new_posts_found.append(post)
+    # --- 수정 끝 ---
 
     # 4. 알림 보내기
     if not new_posts_found:

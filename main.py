@@ -1,183 +1,187 @@
+# main.py
 import requests
-import time
+from bs4 import BeautifulSoup
 import os
-from bs4 import BeautifulSoup 
+import time
 
 # --- 설정 ---
-
-# 1. 모니터링할 갤러리 URL (기본 URL, &page= 제외)
-# '만화 갤러리 6'의 '개념글' 게시판으로 변경
+# 1. 스캔할 갤러리 (만화 갤러리 6 - 개념글)
 TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=comic_new6&exception_mode=recommend"
+# 2. 스캔할 페이지 수 (개념글은 1~2페이지만 해도 충분할 수 있습니다)
+PAGES_TO_SCAN = 2
+# 3. 알림 보낸 글을 기록할 파일
+NOTIFIED_POSTS_FILE = 'notified_posts.txt'
+# --- 설정 끝 ---
 
-# 2. (제거됨) 키워드 설정이 필요 없습니다.
+# 텔레그램 알림 전송 함수
+def send_telegram_notification(message):
+    """지정된 텔레그램 채널로 메시지를 전송합니다."""
+    # GitHub Actions의 'Secrets'에서 토큰과 ID를 가져옴
+    TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+    CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-# 3. (추가) 한 번에 확인할 페이지 수 (개념글은 리젠이 느리므로 1~2페이지만 확인)
-PAGES_TO_SCAN = 2 
+    if not TOKEN or not CHAT_ID:
+        print("알림: 텔레그램 설정(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)이 완료되지 않았습니다. 콘솔에만 출력합니다.")
+        return False
 
-# 4. (중요) 게시글 제목을 포함하는 요소의 CSS 선택자 (개념글도 선택자가 동일함)
-CSS_SELECTOR_FOR_POSTS = "td.gall_tit a"
-
-# 5. 이미 알림을 보낸 게시글을 기록할 파일
-NOTIFIED_POSTS_FILE = "notIFIED_posts.txt"
-
-# 6. (선택) 텔레그램 알림 설정 (GitHub Actions Secrets에서 가져옴)
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") 
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")     
-
-# --- /설정 ---
-
-
-def fetch_recent_posts():
-    """갤러리에서 최신 게시글 목록을 가져옵니다. (여러 페이지 스캔)"""
-    print(f"{PAGES_TO_SCAN}개의 페이지를 스캔합니다: {TARGET_GALLERY_URL}")
+    # 텔레그램 봇 API URL
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': message,
+        'disable_web_page_preview': True
+    }
     
+    try:
+        response = requests.post(url, data=payload, timeout=5)
+        response.raise_for_status() # 200 OK가 아니면 에러 발생
+        if response.json().get("ok"):
+            print(f"텔레그램 알림 전송 성공: {message[:20]}...")
+            return True
+        else:
+            print(f"텔레그램 알림 전송 실패: {response.text}")
+            return False
+    except requests.exceptions.RequestException as e:
+        print(f"오류: 텔레그램 알림 전송에 실패했습니다: {e}")
+        return False
+
+# 이미 알림 보낸 게시글 ID 로드
+def load_notified_posts():
+    """파일에서 이미 알림을 보낸 게시글 ID 목록을 불러옵니다."""
+    if not os.path.exists(NOTIFIED_POSTS_FILE):
+        return set() # 파일이 없으면 빈 세트(set) 반환
+    
+    try:
+        with open(NOTIFIED_POSTS_FILE, 'r', encoding='utf-8') as f:
+            # 파일에서 ID를 읽어와서 set으로 만듦
+            return set(line.strip() for line in f if line.strip())
+    except Exception as e:
+        print(f"오류: {NOTIFIED_POSTS_FILE} 파일 읽기 실패: {e}")
+        return set()
+
+# 알림 보낸 게시글 ID 저장
+def save_notified_posts(notified_ids):
+    """알림을 보낸 게시글 ID 목록을 파일에 저장합니다."""
+    try:
+        with open(NOTIFIED_POSTS_FILE, 'w', encoding='utf-8') as f:
+            for post_id in notified_ids:
+                f.write(f"{post_id}\n")
+    except Exception as e:
+        print(f"오류: {NOTIFIED_POSTS_FILE} 파일 쓰기 실패: {e}")
+
+# 최신 게시글 긁어오기
+def fetch_recent_posts(gallery_url, pages_to_scan):
+    """지정된 갤러리의 여러 페이지에서 게시글 목록을 가져옵니다."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     
-    all_found_posts = []
-    
-    try:
-        # 1페이지부터 PAGES_TO_SCAN 페이지까지 순회
-        for page in range(1, PAGES_TO_SCAN + 1):
-            # 개념글 URL에 페이지 파라미터를 추가합니다.
-            url = f"{TARGET_GALLERY_URL}&page={page}"
-            print(f"  - {page}페이지 확인 중...")
-            
-            response = requests.get(url, headers=headers)
-            response.raise_for_status() 
-            
+    unique_posts = {} # 중복 제거용 딕셔너리 {id: (title, link)}
+
+    print(f"{pages_to_scan}개의 페이지를 스캔합니다: {gallery_url}")
+
+    for page in range(1, pages_to_scan + 1):
+        # 1페이지는 page=1, 그 외에는 &page=2, &page=3...
+        page_url = f"{gallery_url}&page={page}"
+        print(f"  - {page}페이지 확인 중...")
+        
+        try:
+            response = requests.get(page_url, headers=headers, timeout=5)
+            response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            post_elements = soup.select(CSS_SELECTOR_FOR_POSTS)
-            
-            if not post_elements and page == 1:
-                # 1페이지에서조차 글을 못찾으면 선택자 문제
-                print(f"경고: CSS 선택자 '{CSS_SELECTOR_FOR_POSTS}'로 게시글을 찾을 수 없습니다.")
-                print("README의 'CSS 선택자 찾기'를 참고하여 선택자를 수정하세요.")
-                return []
-            
-            page_posts = []
-            for el in post_elements:
-                title = el.get_text(strip=True)
-                post_url = el.get('href', '')
+            # 게시글 목록 선택 (td.gall_tit a)
+            posts = soup.select('td.gall_tit a')
+            if not posts:
+                print(f"  - {page}페이지에서 게시글을 찾을 수 없습니다.")
+                continue
 
-                # --- !!! 버그 수정 !!! ---
-                # 1. 유효한 게시글 링크인지 확인 (공지/설문 등 필터링)
-                #    정상적인 글 링크는 '/board/view/'로 시작하고 'no='를 포함합니다.
-                if not post_url or not post_url.startswith('/board/view/') or 'no=' not in post_url:
-                    continue # 유효하지 않은 링크(javascript:;, 공지 등)는 건너뜁니다.
-                # --- !!! 수정 끝 !!! ---
-
-                if not post_url.startswith('http'):
-                    post_url = "https://gall.dcinside.com" + post_url
-                    
-                post_id = post_url.split('no=')[-1].split('&')[0]
+            for post in posts:
+                title = post.text.strip()
+                link = post.get('href', '')
                 
-                # post_id가 숫자인지 확인
-                if post_id and post_id.isdigit():
-                    page_posts.append({'id': post_id, 'title': title, 'url': post_url})
-            
-            all_found_posts.extend(page_posts)
-            time.sleep(0.5) # 페이지 사이에 약간의 딜레이
-
-        # 중복 제거 (여러 페이지에 공지 등이 중복으로 나올 경우 대비)
-        unique_posts = []
-        seen_ids = set()
-        for post in all_found_posts:
-            if post['id'] not in seen_ids:
-                unique_posts.append(post)
-                seen_ids.add(post['id'])
+                # [중요] 공지사항, 설문조사, 유저 광고 등 필터링
+                # 정상적인 개념글 링크는 /board/view/... 와 no=... 를 포함함
+                if not link.startswith('/board/view/') or 'no=' not in link:
+                    continue
+                
+                # 링크에서 게시글 ID (no=...) 추출
+                try:
+                    # 예: /board/view/?id=comic_new6&no=12345&... -> '12345'
+                    post_id = link.split('no=')[1].split('&')[0]
+                except (IndexError, AttributeError):
+                    continue # ID 추출 실패시 건너뛰기
+                
+                # 중복되지 않은 글만 추가
+                if post_id not in unique_posts:
+                    full_link = "https://gall.dcinside.com" + link
+                    unique_posts[post_id] = (title, full_link)
+                    
+        except requests.exceptions.RequestException as e:
+            print(f"오류: {page}페이지 접근 실패: {e}")
+            continue
+        except Exception as e:
+            print(f"오류: {page}페이지 파싱 실패: {e}")
+            continue
         
-        return unique_posts
+        # 페이지 사이에 약간의 텀
+        time.sleep(0.1)
 
-    except requests.exceptions.RequestException as e:
-        print(f"오류: 페이지를 가져오는 데 실패했습니다 - {e}")
-        return []
+    # 딕셔너리를 리스트로 변환하여 반환 (최신 글이 위로 오도록)
+    # 갤러리 목록은 이미 최신순이므로 순서를 유지
+    return list(unique_posts.items()) # [(id, (title, link)), ...]
 
-def load_notified_posts():
-    """이미 알림을 보낸 게시글 ID 목록을 파일에서 불러옵니다."""
-    if not os.path.exists(NOTIFIED_POSTS_FILE):
-        return set()
-    
-    with open(NOTIFIED_POSTS_FILE, 'r', encoding='utf-8') as f:
-        return set(line.strip() for line in f)
-
-def save_notified_post(post_id):
-    """알림을 보낸 게시글 ID를 파일에 추가합니다."""
-    with open(NOTIFIED_POSTS_FILE, 'a', encoding='utf-8') as f:
-        f.write(post_id + '\n')
-
-def send_telegram_notification(post):
-    """텔레그램으로 알림을 보냅니다."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("알림: 텔레그램 설정(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)이 완료되지 않았습니다. 콘솔에만 출력합니다.")
-        return
-
-    try:
-        # 텔레그램 메시지 생성
-        message = f"📢 **[DC-checker] 새 글 알림 (개념글)**\n\n" # 알림 제목에 (개념글) 추가
-        message += f"**제목:** {post['title']}\n"
-        message += f"**링크:** {post['url']}\n"
-
-        # 텔레그램 봇 API URL
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        
-        # 보낼 데이터 (페이로드)
-        payload = {
-            'chat_id': TELEGRAM_CHAT_ID,
-            'text': message,
-            'parse_mode': 'Markdown', # Markdown 문법 사용
-            'disable_web_page_preview': True # 링크 미리보기 비활성화
-        }
-
-        # 텔레그램 API로 POST 요청
-        response = requests.post(url, json=payload)
-        response_json = response.json()
-
-        if response.status_code == 200 and response_json.get("ok"):
-            print(f"알림: 텔레그램({TELEGRAM_CHAT_ID})으로 알림을 성공적으로 보냈습니다. (ID: {post['id']})")
-        else:
-            print(f"오류: 텔레그램 알림 전송에 실패했습니다. (ID: {post['id']})")
-            print(f"응답: {response_json.get('description', 'N/A')}")
-
-    except Exception as e:
-        print(f"오류: 텔레그램 전송 중 예외 발생 - {e}")
-
-
+# 메인 로직
 def main():
     print("--- DC-checker 시작 ---")
     
-    # 1. 갤러리에서 최신 글 가져오기
-    recent_posts = fetch_recent_posts()
+    # 1. 이전에 알림 보낸 목록 로드 (Artifact로 다운로드된 파일)
+    notified_ids = load_notified_posts()
+    print(f"이전에 알림 보낸 게시글 수: {len(notified_ids)}")
+    
+    # 2. 갤러리에서 최신 게시글 가져오기
+    recent_posts = fetch_recent_posts(TARGET_GALLERY_URL, PAGES_TO_SCAN)
     if not recent_posts:
-        print("게시글을 가져오지 못했거나 오류가 발생했습니다.")
+        print("새 글을 찾지 못했습니다 (게시글 스캔 실패).")
         print("--- DC-checker 종료 ---")
         return
 
-    # 2. 이미 알림 보낸 글 목록 가져오기
-    notified_ids = load_notified_posts()
+    new_posts_found = [] # 새로 발견된 글 목록
     
-    # 3. 새 글 확인 (키워드 없이 모든 새 개념글)
-    new_posts_found = []
-    
-    for post in recent_posts:
-        # 키워드 검사 없이, 아직 알림 보낸 적 없는 글인지 확인
-        if post['id'] not in notified_ids:
-            new_posts_found.append(post)
+    # 3. 최신 글 목록을 순회하며 '새 글'인지 확인
+    # (recent_posts는 최신순이므로, 역순(reversed)으로 돌려야 오래된 글부터 알림이 감)
+    for post_id, (title, link) in reversed(recent_posts):
+        
+        # '새 글' (알림 목록에 없는 글)인지 확인
+        if post_id not in notified_ids:
+            # (키워드 검사 로직 제거됨 - 모든 새 글을 대상으로 함)
+            print(f"발견! -> ID: {post_id}, 제목: {title}")
+            new_posts_found.append((post_id, title, link))
+            notified_ids.add(post_id) # 알림 목록에 즉시 추가
 
-    # 4. 알림 보내기
-    if not new_posts_found:
-        print("새 글을 찾지 못했습니다.")
+    # 4. 새로 찾은 글이 있으면 알림 전송
+    if new_posts_found:
+        print(f"총 {len(new_posts_found)}개의 새 글을 발견하여 알림을 보냅니다.")
+        
+        # 텔레그램 메시지 생성
+        message_lines = []
+        for post_id, title, link in new_posts_found:
+            message_lines.append(f"[{title}]({link})")
+            
+        message = "\n".join(message_lines)
+        
+        # (주의) 텔레그램 메시지 길이 제한 (4096자) 때문에 너무 길면 잘라서 보내야 함
+        # 여기서는 한번에 보낸다고 가정
+        if len(message) > 4000:
+             message = message[:4000] + "\n... (메시지 너무 김)"
+
+        send_telegram_notification(message)
+        
+        # 5. [중요] 새 ID가 추가된 목록을 파일에 저장 (Artifact로 업로드될 파일)
+        save_notified_posts(notified_ids)
+        
     else:
-        for post in new_posts_found:
-            print(f"발견! -> ID: {post['id']}, 제목: {post['title']}")
-            # 텔레그램 알림 보내기
-            send_telegram_notification(post)
-            # 알림 보낸 목록에 추가
-            save_notified_post(post['id'])
-            # 서버에 부담을 주지 않기 위해 약간의 지연
-            time.sleep(1) 
+        print("새 글을 찾지 못했습니다.")
 
     print("--- DC-checker 종료 ---")
 

@@ -12,13 +12,13 @@ TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=comic_new6&excep
 # 2. (제거됨) 키워드 설정이 필요 없습니다.
 
 # 3. (추가) 한 번에 확인할 페이지 수 (개념글은 리젠이 느리므로 1~2페이지만 확인)
-PAGES_TO_SCAN = 1 
+PAGES_TO_SCAN = 2 
 
 # 4. (중요) 게시글 제목을 포함하는 요소의 CSS 선택자 (개념글도 선택자가 동일함)
 CSS_SELECTOR_FOR_POSTS = "td.gall_tit a"
 
 # 5. 이미 알림을 보낸 게시글을 기록할 파일
-NOTIFIED_POSTS_FILE = "notified_posts.txt"
+NOTIFIED_POSTS_FILE = "notIFIED_posts.txt"
 
 # 6. (선택) 텔레그램 알림 설정 (GitHub Actions Secrets에서 가져옴)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") 
@@ -61,12 +61,21 @@ def fetch_recent_posts():
             for el in post_elements:
                 title = el.get_text(strip=True)
                 post_url = el.get('href', '')
+
+                # --- !!! 버그 수정 !!! ---
+                # 1. 유효한 게시글 링크인지 확인 (공지/설문 등 필터링)
+                #    정상적인 글 링크는 '/board/view/'로 시작하고 'no='를 포함합니다.
+                if not post_url or not post_url.startswith('/board/view/') or 'no=' not in post_url:
+                    continue # 유효하지 않은 링크(javascript:;, 공지 등)는 건너뜁니다.
+                # --- !!! 수정 끝 !!! ---
+
                 if not post_url.startswith('http'):
                     post_url = "https://gall.dcinside.com" + post_url
                     
                 post_id = post_url.split('no=')[-1].split('&')[0]
                 
-                if post_id:
+                # post_id가 숫자인지 확인
+                if post_id and post_id.isdigit():
                     page_posts.append({'id': post_id, 'title': title, 'url': post_url})
             
             all_found_posts.extend(page_posts)
@@ -149,7 +158,6 @@ def main():
     # 2. 이미 알림 보낸 글 목록 가져오기
     notified_ids = load_notified_posts()
     
-    # --- 여기가 수정된 부분입니다 ---
     # 3. 새 글 확인 (키워드 없이 모든 새 개념글)
     new_posts_found = []
     
@@ -157,7 +165,6 @@ def main():
         # 키워드 검사 없이, 아직 알림 보낸 적 없는 글인지 확인
         if post['id'] not in notified_ids:
             new_posts_found.append(post)
-    # --- 수정 끝 ---
 
     # 4. 알림 보내기
     if not new_posts_found:

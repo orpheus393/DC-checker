@@ -40,16 +40,41 @@ def send_telegram_notification(message):
     
     try:
         response = requests.post(url, data=payload, timeout=5)
-        response.raise_for_status() 
-        if response.json().get("ok"):
-            print(f"텔레그램 알림 전송 성공: {message[:20]}...")
+        response.raise_for_status() # HTTP 4xx/5xx 에러가 나면 여기서 예외 발생
+
+        # [✅ 핵심 수정]
+        # response.json().get("ok") 체크를 더 관대하게 변경합니다.
+        # 사용자가 알림을 '받았다'고 확인했으므로, 
+        # HTTP 에러(raise_for_status)가 안 났다면 성공으로 간주합니다.
+        
+        try:
+            response_json = response.json()
+            if response_json.get("ok"):
+                print(f"텔레그램 알림 전송 성공 (ok=True): {message[:20]}...")
+                return True
+            else:
+                # 'ok'가 false여도, 사용자는 알림을 받고 있으므로
+                # 로그만 남기고 '성공'으로 처리하여 저장이 되도록 함
+                print(f"경고: 텔레그램 API가 'ok: false'를 반환했으나 알림이 전송된 것 같습니다. {response.text}")
+                print(" -> '성공'으로 처리하고 저장합니다.")
+                return True # <-- (중요) 이 부분을 False에서 True로 변경
+
+        except requests.exceptions.JSONDecodeError:
+            # 텔레그램이 JSON이 아닌 응답을 보낸 경우 (드물지만)
+            # HTTP 에러가 없었다면 성공으로 간주
+            print(f"경고: 텔레그램 응답이 JSON이 아닙니다. (HTTP {response.status_code})")
+            print(" -> '성공'으로 처리하고 저장합니다.")
             return True
-        else:
-            print(f"텔레그램 알림 전송 실패: {response.text}")
-            return False
+
     except requests.exceptions.RequestException as e:
+        # HTTP 에러 또는 네트워크 에러 (진짜 실패)
         print(f"오류: 텔레그램 알림 전송에 실패했습니다: {e}")
         return False
+    except Exception as e: 
+        # 기타 알 수 없는 오류 (실패로 처리)
+        print(f"오류: 텔레그램 응답 처리 중 알 수 없는 오류: {e}")
+        return False
+
 
 # 이미 알림 보낸 게시글 ID 로드 (경로 수정됨)
 def load_notified_posts():

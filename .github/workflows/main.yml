@@ -1,22 +1,22 @@
 # .github/workflows/main.yml
-# GitHub Actions 워크플로우 이름
 name: Check for new posts
 
-# 1. 언제 이 스크립트를 실행할 것인지 설정
 on:
-  workflow_dispatch: # (A) 수동 실행
+  workflow_dispatch:
   schedule:
-    # (B) 자동 실행: 60분마다 실행
     - cron: '*/60 * * * *'
 
-# 2. 어떤 작업을 수행할 것인지 설정
 jobs:
   check:
     runs-on: ubuntu-latest
+    
+    # [✅✅✅ 핵심 수정 ✅✅✅]
+    # Git Push를 위해 'contents: write' 권한을 명시적으로 부여합니다.
+    permissions:
+      contents: write
 
     steps:
       # (1) 저장소의 코드를 실행 환경(runner)으로 가져오기
-      # [✅ 수정] Git Push를 위해 persist-credentials를 false로 설정
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -28,36 +28,26 @@ jobs:
         with:
           python-version: '3.10'
           
-      # (3) [✅ 삭제] 아티팩트 다운로드 단계 (더 이상 필요 없음)
-
-      # (4) requirements.txt 에 있는 라이브러리 설치하기
+      # (3) requirements.txt 에 있는 라이브러리 설치하기
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # (5) 파이썬 스크립트 실행
+      # (4) 파이썬 스크립트 실행
       - name: Run checker script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # [✅ 수정] GITHUB_WORKSPACE 변수 전달 (경로 설정에 필요)
           GITHUB_WORKSPACE: ${{ github.workspace }}
         run: python main.py
         
-      # (6) [✅✅✅ 핵심 로직 변경 ✅✅✅]
-      # 스크립트 실행 후 'notified_posts.json' 파일이 변경되었다면
-      # 자동으로 Git 커밋 및 푸시를 수행
+      # (5) 스크립트 실행 후 'notified_posts.json' 파일이 변경되었다면 자동 커밋
       - name: Commit and push if changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          # 커밋 메시지
           commit_message: "Bot: Update notified posts list"
-          # 커밋할 파일 (이 파일이 변경되었을 때만 커밋 발생)
           file_pattern: notified_posts.json
-          # 커밋할 유저 이름
           commit_user_name: "GitHub Actions Bot"
-          # 커밋할 유저 이메일
           commit_user_email: "actions@github.com"
-          # (옵션) GPG 서명이나 pre-commit 훅을 건너뜀
           commit_options: '--no-verify'

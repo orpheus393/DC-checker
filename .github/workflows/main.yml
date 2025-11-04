@@ -4,7 +4,7 @@ name: Check for new posts
 
 # 1. 언제 이 스크립트를 실행할 것인지 설정
 on:
-  workflow_dispatch: # (A) 수동 실행: GitHub Actions 탭에서 'Run workflow' 버튼으로 수동 실행 가능
+  workflow_dispatch: # (A) 수동 실행
   schedule:
     # (B) 자동 실행: 60분마다 실행
     - cron: '*/60 * * * *'
@@ -12,12 +12,15 @@ on:
 # 2. 어떤 작업을 수행할 것인지 설정
 jobs:
   check:
-    runs-on: ubuntu-latest # 최신 우분투 리눅스 환경에서 실행
+    runs-on: ubuntu-latest
 
     steps:
       # (1) 저장소의 코드를 실행 환경(runner)으로 가져오기
+      # [✅ 수정] Git Push를 위해 persist-credentials를 false로 설정
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # (2) 파이썬 3.10 버전 설치하기
       - name: Set up Python
@@ -25,45 +28,36 @@ jobs:
         with:
           python-version: '3.10'
           
-      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 '.cache' 폴더에 다운로드
-      - name: Download previous post list artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: notified-posts-artifact
-          # [✅ 핵심 수정 3] GITHUB_WORKSPACE/.cache (절대 경로)를 사용
-          path: ${{ github.workspace }}/.cache
-        continue-on-error: true # 처음 실행이라 파일이 없어도 에러 내지 않고 계속 진행
+      # (3) [✅ 삭제] 아티팩트 다운로드 단계 (더 이상 필요 없음)
 
-        # (4) requirements.txt 에 있는 라이브러리 설치하기
+      # (4) requirements.txt 에 있는 라이브러리 설치하기
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # [✅✅✅ 핵심 수정: 이 단계를 새로 추가하세요 ✅✅✅]
-      # 파이썬 스크립트가 .cache 폴더에 파일을 쓸 수 있도록
-      # 실행 전에 미리 폴더를 생성하고 쓰기 권한(777)을 부여합니다.
-      - name: Create .cache directory with full permissions
-        run: |
-          mkdir -p ${{ github.workspace }}/.cache
-          chmod 777 ${{ github.workspace }}/.cache
-
-      # (5) [수정됨] 파이썬 스크립트 실행 (가장 중요한 수정)
+      # (5) 파이썬 스크립트 실행
       - name: Run checker script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # [수정됨] 'GITHUB_WORKSPACE' 변수를 스크립트에 명시적으로 전달
+          # [✅ 수정] GITHUB_WORKSPACE 변수 전달 (경로 설정에 필요)
           GITHUB_WORKSPACE: ${{ github.workspace }}
         run: python main.py
         
-      # (6) [수정됨] 스크립트가 '.cache' 폴더에 저장한 '알림 목록' 파일을 업로드
-      - name: Upload new post list artifact
-        uses: actions/upload-artifact@v4
+      # (6) [✅✅✅ 핵심 로직 변경 ✅✅✅]
+      # 스크립트 실행 후 'notified_posts.json' 파일이 변경되었다면
+      # 자동으로 Git 커밋 및 푸시를 수행
+      - name: Commit and push if changes
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: notified-posts-artifact
-          # [✅ 핵심 수정 4] GITHUB_WORKSPACE/.cache/notified_posts.txt 파일을 지정
-          path: ${{ github.workspace }}/.cache/notified_posts.txt
-          if-no-files-found: error # 만약 파일을 못찾으면 '에러'를 내서 즉시 확인
-          retention-days: 7 # 7일간 보관
-
+          # 커밋 메시지
+          commit_message: "Bot: Update notified posts list"
+          # 커밋할 파일 (이 파일이 변경되었을 때만 커밋 발생)
+          file_pattern: notified_posts.json
+          # 커밋할 유저 이름
+          commit_user_name: "GitHub Actions Bot"
+          # 커밋할 유저 이메일
+          commit_user_email: "actions@github.com"
+          # (옵션) GPG 서명이나 pre-commit 훅을 건너뜀
+          commit_options: '--no-verify'

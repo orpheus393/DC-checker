@@ -5,7 +5,7 @@ name: Check for new posts
 on:
   workflow_dispatch: # 수동으로 실행할 수 있도록 함
   schedule:
-    # 15분 -> 5분으로 변경 (GitHub Actions의 최소 실행 간격)
+    # 5분마다 실행 (GitHub Actions의 최소 실행 간격)
     - cron: '*/5 * * * *'
 
 jobs:
@@ -32,11 +32,8 @@ jobs:
       # 4. 메인 스크립트를 실행합니다.
       - name: Run checker script
         env:
-          # GitHub Secrets에 저장된 이메일 정보를 환경 변수로 주입합니다.
-          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
-          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          # GitHub Secrets에 저장된 텔레그램 정보를 환경 변수로 주입합니다.
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
 

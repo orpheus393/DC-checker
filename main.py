@@ -1,9 +1,6 @@
 import requests
 import time
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
 from bs4 import BeautifulSoup
 
 # --- 설정 ---
@@ -23,12 +20,9 @@ CSS_SELECTOR_FOR_POSTS = "td.gall_tit a"
 # 5. 이미 알림을 보낸 게시글을 기록할 파일
 NOTIFIED_POSTS_FILE = "notified_posts.txt"
 
-# 6. (선택) 이메일 알림 설정 (GitHub Actions Secrets에서 가져옴)
-SMTP_SERVER = os.environ.get("SMTP_SERVER") 
-SMTP_PORT = os.environ.get("SMTP_PORT")     
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL") 
-SENDER_PASSWORD = os.environ.get("SENDER_PASSWORD") 
-RECEIVER_EMAIL = os.environ.get("RECEIVER_EMAIL") 
+# 6. (선택) 텔레그램 알림 설정 (GitHub Actions Secrets에서 가져옴)
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") 
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")     
 
 # --- /설정 ---
 
@@ -93,55 +87,52 @@ def fetch_recent_posts():
 
 def load_notified_posts():
     """이미 알림을 보낸 게시글 ID 목록을 파일에서 불러옵니다."""
-    # --- 여기가 수정된 부분입니다 (들여쓰기 오류 해결) ---
     if not os.path.exists(NOTIFIED_POSTS_FILE):
-        return set() # 이 줄이 빠져있었습니다.
+        return set()
     
     with open(NOTIFIED_POSTS_FILE, 'r', encoding='utf-8') as f:
-        return set(line.strip() for line in f) # 이 줄도 빠져있었습니다.
+        return set(line.strip() for line in f)
 
 def save_notified_post(post_id):
     """알림을 보낸 게시글 ID를 파일에 추가합니다."""
-    # --- 여기도 수정되었습니다 ---
     with open(NOTIFIED_POSTS_FILE, 'a', encoding='utf-8') as f:
-        f.write(post_id + '\n') # 이 줄이 빠져있었습니다.
+        f.write(post_id + '\n')
 
-def send_email_notification(post):
-    """이메일로 알림을 보냅니다."""
-    if not all([SMTP_SERVER, SMTP_PORT, SENDER_EMAIL, SENDER_PASSWORD, RECEIVER_EMAIL]):
-        print("알림: 이메일 설정(SMTP_SERVER, PORT, SENDER_EMAIL, SENDER_PASSWORD, RECEIVER_EMAIL)이 완료되지 않았습니다. 콘솔에만 출력합니다.")
+def send_telegram_notification(post):
+    """텔레그램으로 알림을 보냅니다."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("알림: 텔레그램 설정(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)이 완료되지 않았습니다. 콘솔에만 출력합니다.")
         return
 
     try:
-        # 이메일 제목과 본문 생성
-        subject = f"[DC-checker] 새 글 알림: {post['title']}"
-        body = f"키워드를 포함한 새 글이 올라왔습니다.\n\n"
-        body += f"제목: {post['title']}\n"
-        body += f"링크: {post['url']}\n"
+        # 텔레그램 메시지 생성
+        message = f"📢 **[DC-checker] 새 글 알림**\n\n"
+        message += f"**제목:** {post['title']}\n"
+        message += f"**링크:** {post['url']}\n"
 
-        # MIMEText 객체 생성
-        msg = MIMEText(body, 'plain', 'utf-8')
-        msg['Subject'] = Header(subject, 'utf-8')
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = RECEIVER_EMAIL
-
-        # SMTP 서버 연결 및 로그인
-        print(f"SMTP 서버({SMTP_SERVER}:{SMTP_PORT})에 연결 중...")
+        # 텔레그램 봇 API URL
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         
-        # --- 여기가 수정된 부분입니다 (이메일 전송 버그 수정) ---
-        # smtplib.SMTP(int(SMTP_PORT)) -> smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT))
-        with smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT)) as s:
-            s.starttls() # TLS 암호화 시작
-            s.login(SENDER_EMAIL, SENDER_PASSWORD)
-            s.sendmail(SENDER_EMAIL, [RECEIVER_EMAIL], msg.as_string())
-        
-        print(f"알림: 이메일({RECEIVER_EMAIL})로 알림을 성공적으로 보냈습니다. (ID: {post['id']})")
+        # 보낼 데이터 (페이로드)
+        payload = {
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': message,
+            'parse_mode': 'Markdown', # Markdown 문법 사용
+            'disable_web_page_preview': True # 링크 미리보기 비활성화
+        }
 
-    except smtplib.SMTPAuthenticationError:
-        print(f"오류: 이메일 로그인에 실패했습니다. (ID: {post['id']})")
-        print("SENDER_EMAIL 또는 SENDER_PASSWORD(앱 비밀번호)가 올바른지 확인하세요.")
+        # 텔레그램 API로 POST 요청
+        response = requests.post(url, json=payload)
+        response_json = response.json()
+
+        if response.status_code == 200 and response_json.get("ok"):
+            print(f"알림: 텔레그램({TELEGRAM_CHAT_ID})으로 알림을 성공적으로 보냈습니다. (ID: {post['id']})")
+        else:
+            print(f"오류: 텔레그램 알림 전송에 실패했습니다. (ID: {post['id']})")
+            print(f"응답: {response_json.get('description', 'N/A')}")
+
     except Exception as e:
-        print(f"오류: 이메일 전송에 실패했습니다 - {e}")
+        print(f"오류: 텔레그램 전송 중 예외 발생 - {e}")
 
 
 def main():
@@ -174,8 +165,8 @@ def main():
     else:
         for post in new_posts_found:
             print(f"발견! -> ID: {post['id']}, 제목: {post['title']}")
-            # 이메일 알림 보내기
-            send_email_notification(post)
+            # 텔레그램 알림 보내기
+            send_telegram_notification(post)
             # 알림 보낸 목록에 추가
             save_notified_post(post['id'])
             # 서버에 부담을 주지 않기 위해 약간의 지연
@@ -185,5 +176,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

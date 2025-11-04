@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 # --- 설정 ---
 
 # 1. 모니터링할 갤러리 URL (기본 URL, &page= 제외)
-TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=cartoon"
+TARGET_GALLERY_URL = "https://gall.dcinside.com/board/lists/?id=comic_new6"
 
 # 2. 찾고 싶은 키워드 목록
 TARGET_KEYWORDS = ["카라키다가", "고서 생활" ,"에마쨩과"] # 원하는 키워드로 수정하세요

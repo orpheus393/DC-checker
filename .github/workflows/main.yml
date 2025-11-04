@@ -6,7 +6,7 @@ name: Check for new posts
 on:
   workflow_dispatch: # (A) 수동 실행: GitHub Actions 탭에서 'Run workflow' 버튼으로 수동 실행 가능
   schedule:
-    # (B) 자동 실행: 10분마다 실행
+    # (B) 자동 실행: 60분마다 실행
     - cron: '*/60 * * * *'
 
 # 2. 어떤 작업을 수행할 것인지 설정
@@ -25,13 +25,13 @@ jobs:
         with:
           python-version: '3.10'
           
-      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 '절대 경로'에 다운로드
+      # (3) [수정됨] 이전 실행의 '알림 목록' 파일을 '.cache' 폴더에 다운로드
       - name: Download previous post list artifact
         uses: actions/download-artifact@v4
         with:
           name: notified-posts-artifact
-          # [수정됨] GITHUB_WORKSPACE (절대 경로)를 사용
-          path: ${{ github.workspace }}
+          # [✅ 핵심 수정 3] GITHUB_WORKSPACE/.cache (절대 경로)를 사용
+          path: ${{ github.workspace }}/.cache
         continue-on-error: true # 처음 실행이라 파일이 없어도 에러 내지 않고 계속 진행
 
       # (4) requirements.txt 에 있는 라이브러리 설치하기
@@ -49,13 +49,13 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
         run: python main.py
         
-      # (6) [수정됨] 스크립트가 '절대 경로'에 저장한 '알림 목록' 파일을 업로드
+      # (6) [수정됨] 스크립트가 '.cache' 폴더에 저장한 '알림 목록' 파일을 업로드
       - name: Upload new post list artifact
         uses: actions/upload-artifact@v4
         with:
           name: notified-posts-artifact
-          # [수정됨] GITHUB_WORKSPACE (절대 경로)에 있는 파일을 지정
-          path: ${{ github.workspace }}/notified_posts.txt
-          if-no-files-found: error # [수정됨] 만약 파일을 못찾으면 '에러'를 내서 즉시 확인
+          # [✅ 핵심 수정 4] GITHUB_WORKSPACE/.cache/notified_posts.txt 파일을 지정
+          path: ${{ github.workspace }}/.cache/notified_posts.txt
+          if-no-files-found: error # 만약 파일을 못찾으면 '에러'를 내서 즉시 확인
           retention-days: 7 # 7일간 보관
 

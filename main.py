@@ -13,10 +13,13 @@ PAGES_TO_SCAN = 1
 # 3. [수정됨] 알림 보낸 글을 기록할 파일 이름
 NOTIFIED_POSTS_FILENAME = 'notified_posts.txt'
 # [수정됨] GitHub Actions의 작업 공간(workspace) 경로를 기준으로 파일 경로 설정
-# 로컬 테스트 시 GITHUB_WORKSPACE가 없으면 현재 폴더(.)를 사용
 WORKSPACE_PATH = os.environ.get('GITHUB_WORKSPACE', '.')
-NOTIFIED_POSTS_FILE_PATH = os.path.join(WORKSPACE_PATH, NOTIFIED_POSTS_FILENAME)
+
+# [✅ 핵심 수정 1] 아티팩트를 저장할 별도의 .cache 디렉토리 지정
+CACHE_DIR = os.path.join(WORKSPACE_PATH, '.cache')
+NOTIFIED_POSTS_FILE_PATH = os.path.join(CACHE_DIR, NOTIFIED_POSTS_FILENAME)
 # --- 설정 끝 ---
+
 
 # 텔레그램 알림 전송 함수
 def send_telegram_notification(message):
@@ -66,6 +69,9 @@ def load_notified_posts():
 def save_notified_posts(notified_ids):
     """알림을 보낸 게시글 ID 목록을 파일에 저장합니다."""
     try:
+        # [✅ 핵심 수정 2] 파일을 쓰기 전에 .cache 디렉토리가 있는지 확인하고 없으면 생성
+        os.makedirs(CACHE_DIR, exist_ok=True) 
+        
         with open(NOTIFIED_POSTS_FILE_PATH, 'w', encoding='utf-8') as f:
             for post_id in notified_ids:
                 f.write(f"{post_id}\n")

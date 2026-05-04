@@ -16,6 +16,7 @@ from typing import Iterable
 
 
 DEFAULT_DATA_FILE = Path(__file__).resolve().parent / "expenses.json"
+DEFAULT_RULES_FILE = Path(__file__).resolve().parent / "category_rules.json"
 TX_TYPES = ("expense", "income")
 
 
@@ -32,6 +33,21 @@ def load_transactions(path: Path) -> list[dict]:
 def save_transactions(path: Path, transactions: list[dict]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(transactions, f, ensure_ascii=False, indent=2)
+
+
+def load_rules(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} 는 JSON 객체여야 합니다.")
+    return data
+
+
+def save_rules(path: Path, rules: dict[str, str]) -> None:
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(rules, f, ensure_ascii=False, indent=2, sort_keys=True)
 
 
 def parse_date(value: str) -> str:
@@ -103,13 +119,13 @@ def cmd_list(args: argparse.Namespace) -> int:
         print("표시할 거래가 없습니다.")
         return 0
 
-    print(f"{'ID':<10}{'날짜':<12}{'구분':<8}{'카테고리':<14}{'금액':>14}  설명")
-    print("-" * 72)
+    print(f"{'ID':<14}{'날짜':<12}{'구분':<8}{'카테고리':<14}{'금액':>14}  설명")
+    print("-" * 76)
     for tx in rows:
         sign = "-" if tx["type"] == "expense" else "+"
         amount_str = f"{sign}{format_amount(tx['amount'])}"
         print(
-            f"{tx['id']:<10}{tx['date']:<12}{tx['type']:<8}"
+            f"{tx['id']:<14}{tx['date']:<12}{tx['type']:<8}"
             f"{tx['category']:<14}{amount_str:>14}  {tx['description']}"
         )
     return 0
@@ -154,6 +170,112 @@ def cmd_delete(args: argparse.Namespace) -> int:
     return 0
 
 
+def _collect_xlsx(paths: list[str]) -> list[Path]:
+    out: list[Path] = []
+    for raw in paths:
+        p = Path(raw)
+        if p.is_dir():
+            out.extend(sorted(p.glob("*.xlsx")))
+            out.extend(sorted(p.glob("*.xls")))
+        elif p.is_file():
+            out.append(p)
+        else:
+            print(f"경로 없음: {p}", file=sys.stderr)
+    return out
+
+
+def cmd_import(args: argparse.Namespace) -> int:
+    from importers import ADAPTERS, import_file
+
+    if args.source and args.source not in ADAPTERS:
+        print(
+            f"--source 는 {list(ADAPTERS)} 중 하나여야 합니다.", file=sys.stderr
+        )
+        return 2
+
+    files = _collect_xlsx(args.paths)
+    if not files:
+        print("처리할 엑셀 파일이 없습니다.", file=sys.stderr)
+        return 1
+
+    rules = load_rules(args.rules_file)
+    transactions = load_transactions(args.data_file)
+    existing_ids = {tx["id"] for tx in transactions}
+
+    total_new = 0
+    total_dup = 0
+    for path in files:
+        txs, adapter, note = import_file(path, args.source, rules)
+        if not txs and note:
+            print(f"[{path.name}] 실패: {note}", file=sys.stderr)
+            continue
+        new = [t for t in txs if t["id"] not in existing_ids]
+        dup = len(txs) - len(new)
+        for t in new:
+            existing_ids.add(t["id"])
+        transactions.extend(new)
+        total_new += len(new)
+        total_dup += dup
+        label = ADAPTERS[adapter]["label"] if adapter in ADAPTERS else "?"
+        suffix = f" — {note}" if note else ""
+        print(f"[{path.name}] {label}: 신규 {len(new)}건, 중복 {dup}건{suffix}")
+
+    transactions.sort(key=lambda t: (t["date"], t["id"]))
+    save_transactions(args.data_file, transactions)
+    print(f"\n총 신규 {total_new}건, 중복 {total_dup}건 저장 완료")
+
+    unclassified = sum(1 for t in transactions if t["category"] == "미분류")
+    if unclassified:
+        print(f"미분류 {unclassified}건 — 'classify' 로 분류하세요.")
+    return 0
+
+
+def cmd_classify(args: argparse.Namespace) -> int:
+    transactions = load_transactions(args.data_file)
+    rules = load_rules(args.rules_file)
+    pending = [t for t in transactions if t["category"] == "미분류"]
+    if not pending:
+        print("미분류 거래가 없습니다.")
+        return 0
+
+    groups: dict[str, list[dict]] = {}
+    for tx in pending:
+        groups.setdefault(tx["description"], []).append(tx)
+
+    print(f"미분류 가맹점 {len(groups)}곳, 총 {len(pending)}건")
+    print("(빈 입력 = 건너뛰기, 'q' = 종료)\n")
+
+    ordered = sorted(groups.items(), key=lambda x: -len(x[1]))
+    for i, (desc, txs) in enumerate(ordered, 1):
+        sample = txs[0]
+        total = sum(t["amount"] for t in txs)
+        sign = "-" if sample["type"] == "expense" else "+"
+        print(f"[{i}/{len(groups)}] {desc}  ({len(txs)}건, {sign}{format_amount(total)}원)")
+        try:
+            ans = input("  카테고리: ").strip()
+        except EOFError:
+            print()
+            break
+        if ans == "q":
+            break
+        if not ans:
+            continue
+        for tx in txs:
+            tx["category"] = ans
+        try:
+            keyword = input(f"  룰 키워드 [Enter=전체, '-'=저장 안함]: ").strip()
+        except EOFError:
+            keyword = ""
+        if keyword != "-":
+            rules[keyword or desc] = ans
+        print()
+
+    save_transactions(args.data_file, transactions)
+    save_rules(args.rules_file, rules)
+    print("저장 완료.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="간단한 CLI 가계부")
     parser.add_argument(
@@ -161,6 +283,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_DATA_FILE,
         help="거래 내역 JSON 파일 경로 (기본: expenses.json)",
+    )
+    parser.add_argument(
+        "--rules-file",
+        type=Path,
+        default=DEFAULT_RULES_FILE,
+        help="가맹점→카테고리 룰 JSON 파일 (기본: category_rules.json)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -192,6 +320,17 @@ def build_parser() -> argparse.ArgumentParser:
     del_p = sub.add_parser("delete", help="ID 로 거래 삭제")
     del_p.add_argument("id", help="거래 ID")
     del_p.set_defaults(func=cmd_delete)
+
+    imp_p = sub.add_parser("import", help="카드사·은행 엑셀 명세서 일괄 import")
+    imp_p.add_argument("paths", nargs="+", help="엑셀 파일 또는 폴더")
+    imp_p.add_argument(
+        "--source",
+        help="어댑터 강제 지정: hyundai|bc_ibk|ibk_bank (생략 시 자동 감지)",
+    )
+    imp_p.set_defaults(func=cmd_import)
+
+    cls_p = sub.add_parser("classify", help="미분류 거래를 인터랙티브 분류")
+    cls_p.set_defaults(func=cmd_classify)
 
     return parser
 

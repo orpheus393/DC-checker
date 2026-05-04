@@ -1,3 +1,5 @@
 # Python 스크립트 실행에 필요한 라이브러리 목록
 requests
 beautifulsoup4
+# 가계부 import 용 엑셀 리더
+openpyxl

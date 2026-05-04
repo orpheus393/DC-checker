@@ -81,3 +81,31 @@ B단계에서 @get_id_bot에게 받은 숫자 ID를 붙여넣습니다. (예: 12
 ⚠️ 주의사항
 
 웹 크롤링은 대상 웹사이트의 이용 약관 및 robots.txt 파일을 준수해야 합니다. 과도한 요청으로 서버에 부담을 주지 않도록 주의하세요.
+
+---
+
+📒 가계부 (expense_tracker.py)
+
+같은 저장소에 포함된 간단한 CLI 가계부입니다. 의존성 없이 Python 표준 라이브러리만 사용하며, 거래 내역은 JSON 파일(`expenses.json`, 자동 생성)에 저장됩니다.
+
+기본 사용법:
+
+```bash
+# 지출 추가 (기본 type=expense, date=오늘)
+python expense_tracker.py add 12000 식비 -d "점심 김치찌개"
+
+# 수입 추가
+python expense_tracker.py add 1500000 월급 --type income --date 2026-05-01
+
+# 전체 목록 / 월별·카테고리·종류 필터
+python expense_tracker.py list
+python expense_tracker.py list --month 2026-05 --category 식비
+
+# 월별 요약 (수입/지출/잔액 + 카테고리별 지출 비중)
+python expense_tracker.py summary --month 2026-05
+
+# ID 로 거래 삭제
+python expense_tracker.py delete 5b1672d3
+```
+
+데이터 파일 위치는 `--data-file` 옵션으로 변경할 수 있습니다.

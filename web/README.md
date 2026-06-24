@@ -69,10 +69,12 @@ Vercel 프로젝트 → **Settings → Environment Variables** 에 `YOUTUBE_API_
 web/
 ├── index.html        # 화면 + 디자인 + 탭 전환 (실시간 fetch → 실패 시 샘플 폴백)
 ├── data.js           # 샘플/폴백 차트 데이터
-├── vercel.json       # Vercel 배포 설정
-├── api/
-│   ├── music.js      # 인기 음악 실시간 (Apple, 키 불필요)
-│   ├── movies.js     # 인기 영화 실시간 (Apple, 키 불필요)
-│   └── youtube.js    # 유튜브 뮤직 실시간 (YOUTUBE_API_KEY 필요)
 └── README.md         # 이 문서
+
+(저장소 루트)
+├── vercel.json       # Vercel 배포 설정 (outputDirectory=web)
+└── api/
+    ├── music.js      # 인기 음악 실시간 (Apple, 키 불필요)
+    ├── movies.js     # 인기 영화 실시간 (Apple, 키 불필요)
+    └── youtube.js    # 유튜브 뮤직 실시간 (YOUTUBE_API_KEY 필요)
 ```

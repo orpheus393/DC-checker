@@ -158,6 +158,15 @@
   .flat { color: var(--flat); }
   .new  { color: #2a1d05; background: var(--gold); padding: 2px 8px; border-radius: 6px; font-size: 11px; }
 
+  /* 데이터 출처 배지 */
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .badge.live   { color: #06281c; background: var(--up); }
+  .badge.sample { color: var(--muted); background: var(--ink-soft); border: 1px solid var(--line); }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+
   /* ── 안내 배너 ── */
   .note {
     margin: 22px 4px 0;
@@ -199,7 +208,10 @@
 
     <div class="chart-head">
       <div class="chart-title" id="chartTitle">빌보드 HOT 100</div>
-      <div class="chart-meta" id="chartMeta"></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="badge sample" id="srcBadge">샘플</span>
+        <span class="chart-meta" id="chartMeta"></span>
+      </div>
     </div>
 
     <div class="list" id="list" role="tabpanel" aria-live="polite"></div>
@@ -219,7 +231,15 @@
   const list = document.getElementById('list');
   const titleEl = document.getElementById('chartTitle');
   const metaEl = document.getElementById('chartMeta');
+  const badge = document.getElementById('srcBadge');
   const tabs = [...document.querySelectorAll('.tab')];
+
+  // 탭별 실시간 API 경로 (없으면 샘플 데이터만 사용)
+  const API = {
+    youtube:   '/api/youtube',
+    boxoffice: '/api/boxoffice',
+    // billboard: 공식 API가 없어 샘플 데이터를 사용합니다.
+  };
 
   function changeBadge(c) {
     if (c === 'new')  return '<span class="new">NEW</span>';
@@ -228,21 +248,42 @@
     return `<span class="change down">▼ ${Math.abs(c)}</span>`;
   }
 
-  function render(key) {
-    const data = CHARTS[key];
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function paint(data, isLive) {
     titleEl.textContent = data.title;
     metaEl.textContent = data.meta;
+    badge.textContent = isLive ? '실시간' : '샘플';
+    badge.className = 'badge ' + (isLive ? 'live' : 'sample');
     list.innerHTML = data.items.map((it, i) => `
       <div class="row">
         <div class="rank">${i + 1}</div>
         <div class="art">${it.emoji || '🎶'}</div>
         <div class="info">
-          <div class="title">${it.title}</div>
-          <div class="sub">${it.sub}</div>
+          <div class="title">${escapeHtml(it.title)}</div>
+          <div class="sub">${escapeHtml(it.sub)}</div>
         </div>
         ${changeBadge(it.change)}
       </div>
     `).join('');
+  }
+
+  async function render(key) {
+    // 실시간 API가 있으면 먼저 시도, 실패하면 샘플로 폴백
+    if (API[key]) {
+      list.innerHTML = '<div class="loading">불러오는 중…</div>';
+      try {
+        const r = await fetch(API[key]);
+        if (r.ok) {
+          const live = await r.json();
+          if (live.items && live.items.length) return paint(live, true);
+        }
+      } catch (e) { /* 네트워크 실패 → 샘플로 폴백 */ }
+    }
+    paint(CHARTS[key], false);
   }
 
   tabs.forEach(tab => {

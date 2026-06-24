@@ -24,3 +24,9 @@ IDE 설정 파일
 
 .vscode/
 .idea/
+
+가계부 개인 데이터 (절대 공개 금지)
+
+inbox/
+expenses.json
+category_rules.json

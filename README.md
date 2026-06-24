@@ -81,3 +81,54 @@ B단계에서 @get_id_bot에게 받은 숫자 ID를 붙여넣습니다. (예: 12
 ⚠️ 주의사항
 
 웹 크롤링은 대상 웹사이트의 이용 약관 및 robots.txt 파일을 준수해야 합니다. 과도한 요청으로 서버에 부담을 주지 않도록 주의하세요.
+
+---
+
+📒 가계부 (expense_tracker.py)
+
+같은 저장소에 포함된 CLI 가계부입니다. 거래 내역은 JSON 파일(`expenses.json`)에, 가맹점→카테고리 룰은 `category_rules.json` 에 저장됩니다. 두 파일과 `inbox/` 는 개인정보라 `.gitignore` 로 미공개 처리되어 있습니다.
+
+수기 입력 (현금·자동이체 등):
+
+```bash
+# 지출 추가 (기본 type=expense, date=오늘)
+python expense_tracker.py add 12000 식비 -d "점심 김치찌개"
+
+# 수입 추가
+python expense_tracker.py add 1500000 월급 --type income --date 2026-05-01
+
+# 전체 목록 / 월별·카테고리·종류 필터
+python expense_tracker.py list
+python expense_tracker.py list --month 2026-05 --category 식비
+
+# 월별 요약 (수입/지출/잔액 + 카테고리별 지출 비중)
+python expense_tracker.py summary --month 2026-05
+
+# ID 로 거래 삭제
+python expense_tracker.py delete 5b1672d3
+```
+
+월 1회 일괄 import (현대카드 / 기업은행 BC카드 / 기업은행 계좌):
+
+```bash
+# 1) 카드사·은행 웹에서 거래내역 엑셀 다운로드 → inbox/ 에 드롭
+mkdir -p inbox
+# 2) 일괄 import (어댑터 자동 감지)
+python expense_tracker.py import inbox/
+
+# 어댑터 명시 지정도 가능 (hyundai|bc_ibk|ibk_bank)
+python expense_tracker.py import inbox/현대카드_2026_04.xlsx --source hyundai
+
+# 3) 미분류 거래만 인터랙티브 분류 — 룰은 자동 저장돼 다음 달부터 자동 분류
+python expense_tracker.py classify
+```
+
+`import` 동작:
+
+- **어댑터 자동 감지**: 파일명·본문 내 키워드(`현대카드`, `BC카드`, `거래일시`)로 카드사·은행 자동 매칭
+- **중복 제거**: `(날짜·금액·가맹점·소스)` 해시 ID 기반. 다음 달 명세서가 일부 겹쳐도 안전
+- **이중 카운트 방지**: 기업은행 계좌 거래에서 `이용대금`·`현대카드`·`BC카드` 등 카드 결제일 출금 행은 자동 제외 (카드 명세서에서 이미 잡힘)
+- **수입 자동 인식**: 은행 거래의 입금 컬럼 → `type: income`
+- **카테고리 자기학습**: classify 에서 답한 키워드가 `category_rules.json` 에 저장 → 이후 자동 적용. "스타벅스 강남점" 대신 "스타벅스" 로 키워드를 줄여 저장하면 모든 지점에 적용됩니다.
+
+데이터 파일 위치는 `--data-file`, 룰 파일 위치는 `--rules-file` 옵션으로 변경 가능.

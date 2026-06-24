@@ -201,13 +201,14 @@
     </header>
 
     <nav class="tabs" role="tablist" aria-label="차트 종류">
-      <button class="tab" role="tab" aria-selected="true"  data-chart="billboard">🎵 빌보드 HOT 100</button>
-      <button class="tab" role="tab" aria-selected="false" data-chart="boxoffice">🎬 박스오피스</button>
+      <button class="tab" role="tab" aria-selected="true"  data-chart="music">🎵 인기 음악</button>
+      <button class="tab" role="tab" aria-selected="false" data-chart="movies">🎬 인기 영화</button>
       <button class="tab" role="tab" aria-selected="false" data-chart="youtube">▶️ 유튜브 뮤직</button>
+      <button class="tab" role="tab" aria-selected="false" data-chart="billboard">🏆 빌보드</button>
     </nav>
 
     <div class="chart-head">
-      <div class="chart-title" id="chartTitle">빌보드 HOT 100</div>
+      <div class="chart-title" id="chartTitle">인기 음악</div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span class="badge sample" id="srcBadge">샘플</span>
         <span class="chart-meta" id="chartMeta"></span>
@@ -217,10 +218,10 @@
     <div class="list" id="list" role="tabpanel" aria-live="polite"></div>
 
     <div class="note">
-      ⚠️ 지금 보이는 순위는 <b>디자인 확인용 샘플 데이터</b>예요.
-      실제 실시간 차트로 바꾸려면 <b>공식 API 연동</b>이 필요합니다 —
-      유튜브는 <b>YouTube Data API</b>, 영화는 <b>TMDB API</b> 등.
-      (자세한 연동 방법은 <b>README.md</b>에 정리해 두었어요.)
+      🎵 <b>인기 음악</b>·🎬 <b>인기 영화</b>는 <b>키 없이</b> Apple 공개 차트에서 실시간으로 불러와요
+      (배지가 <b>실시간</b>이면 성공). 혹시 <b>샘플</b>로 보이면 브라우저 보안(CORS) 때문이며,
+      클라우드에 배포하면 서버가 대신 가져와 항상 실시간으로 표시됩니다.
+      ▶️ 유튜브는 무료 API 키, 🏆 빌보드는 공식 API가 없어 샘플로 둡니다. (자세한 내용 <b>README.md</b>)
     </div>
 
     <footer>© 2026 CHART WORLD · 프로토타입</footer>
@@ -234,11 +235,30 @@
   const badge = document.getElementById('srcBadge');
   const tabs = [...document.querySelectorAll('.tab')];
 
-  // 탭별 실시간 API 경로 (없으면 샘플 데이터만 사용)
-  const API = {
-    youtube:   '/api/youtube',
-    boxoffice: '/api/boxoffice',
-    // billboard: 공식 API가 없어 샘플 데이터를 사용합니다.
+  // 차트별 실시간 데이터 소스.
+  //  direct = 브라우저에서 바로 호출(키 불필요). 막히면(CORS) proxy로 폴백.
+  //  proxy  = 서버리스 함수(배포 시 동작). 둘 다 실패하면 data.js 샘플.
+  const SOURCES = {
+    music: {
+      direct: 'https://rss.marketingtools.apple.com/api/v2/kr/music/most-played/25/songs.json',
+      proxy:  '/api/music',
+      parse: (d) => ({
+        title: '글로벌 인기 음악', meta: '실시간 · Apple Music',
+        items: (d.feed?.results || []).slice(0, 10)
+          .map((s) => ({ title: s.name, sub: s.artistName, emoji: '🎵', change: 0 })),
+      }),
+    },
+    movies: {
+      direct: 'https://itunes.apple.com/kr/rss/topmovies/limit=10/json',
+      proxy:  '/api/movies',
+      parse: (d) => ({
+        title: '인기 영화', meta: '실시간 · Apple',
+        items: (d.feed?.entry || [])
+          .map((e) => ({ title: e['im:name']?.label || '', sub: e['im:artist']?.label || '영화', emoji: '🎬', change: 0 })),
+      }),
+    },
+    youtube: { proxy: '/api/youtube' },  // 키 필요. 미설정 시 샘플.
+    // billboard: 실시간 소스 없음 → 항상 샘플.
   };
 
   function changeBadge(c) {
@@ -271,19 +291,28 @@
     `).join('');
   }
 
+  async function tryJson(url, parse) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const raw = await r.json();
+    const data = parse ? parse(raw) : raw;   // proxy는 이미 가공된 형태
+    if (!data.items || !data.items.length) throw new Error('empty');
+    return data;
+  }
+
   async function render(key) {
-    // 실시간 API가 있으면 먼저 시도, 실패하면 샘플로 폴백
-    if (API[key]) {
+    const src = SOURCES[key];
+    if (src) {
       list.innerHTML = '<div class="loading">불러오는 중…</div>';
-      try {
-        const r = await fetch(API[key]);
-        if (r.ok) {
-          const live = await r.json();
-          if (live.items && live.items.length) return paint(live, true);
-        }
-      } catch (e) { /* 네트워크 실패 → 샘플로 폴백 */ }
+      // 1) 브라우저에서 직접(키 불필요)  2) 실패 시 서버 프록시
+      if (src.direct) {
+        try { return paint(await tryJson(src.direct, src.parse), true); } catch (e) {}
+      }
+      if (src.proxy) {
+        try { return paint(await tryJson(src.proxy), true); } catch (e) {}  // 프록시는 이미 가공됨
+      }
     }
-    paint(CHARTS[key], false);
+    paint(CHARTS[key], false);   // 최종 폴백: 샘플
   }
 
   tabs.forEach(tab => {
@@ -294,7 +323,7 @@
     });
   });
 
-  render('billboard');
+  render('music');
 </script>
 </body>
 </html>

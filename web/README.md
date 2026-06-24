@@ -42,24 +42,25 @@ python -m http.server 8000
 
 ---
 
-## 3. 실시간 데이터 연동
+## 3. 실시간 데이터 (대부분 키 불필요!)
 
-서버리스 함수가 이미 만들어져 있어요 (`web/api/youtube.js`, `web/api/boxoffice.js`).
-**API 키만 발급받아 Vercel 환경변수에 넣으면** 화면 배지가 `샘플` → `실시간` 으로 바뀝니다.
-(키가 없으면 자동으로 샘플 데이터로 폴백하므로 망가지지 않아요.)
+| 차트 | 데이터 소스 | API 키 | 상태 |
+|------|------------|--------|------|
+| 🎵 인기 음악 | Apple Music 공개 RSS | **불필요** | 바로 실시간 |
+| 🎬 인기 영화 | Apple 공개 RSS | **불필요** | 바로 실시간 |
+| ▶️ 유튜브 뮤직 | YouTube Data API v3 | 필요(무료) | 키 넣으면 실시간 |
+| 🏆 빌보드 | 공식 API 없음 | — | 샘플 유지 |
 
-| 차트 | 데이터 소스 | 환경변수 이름 | 키 발급처 |
-|------|------------|--------------|-----------|
-| ▶️ 유튜브 뮤직 | YouTube Data API v3 | `YOUTUBE_API_KEY` | Google Cloud Console → API 및 서비스 → 사용자 인증 정보 |
-| 🎬 박스오피스 | TMDB (The Movie Database) | `TMDB_API_KEY` | https://www.themoviedb.org → 설정 → API (무료) |
-| 🎵 빌보드 | 공식 API 없음 | — | 샘플 유지 (공개 데이터셋/직접 집계 필요) |
+동작 순서: 화면이 ① 브라우저에서 직접 호출 → ② (실패 시) 서버리스 함수 → ③ (둘 다 실패 시) 샘플 순으로 시도합니다.
+- 로컬에서 `index.html`을 열면 브라우저 보안(CORS)으로 직접 호출이 막힐 수 있어요 → 그땐 샘플로 보입니다.
+- **클라우드(Vercel)에 배포하면** 서버리스 함수가 대신 가져와 음악·영화는 **항상 실시간**으로 표시됩니다.
 
-### 키 넣는 곳
-Vercel 프로젝트 → **Settings → Environment Variables** 에서 위 이름으로 추가 → **Redeploy**.
+### 유튜브까지 실시간으로 (선택)
+Vercel 프로젝트 → **Settings → Environment Variables** 에 `YOUTUBE_API_KEY` 추가 → Redeploy.
+키는 Google Cloud Console → API 및 서비스 → 사용자 인증 정보에서 무료 발급.
 
-> ⚠️ API 키는 절대 `index.html`/`data.js` 같은 브라우저 코드에 직접 넣지 마세요.
-> 서버리스 함수(`/api`)가 서버에서만 키를 읽도록 설계돼 있습니다.
-> 빌보드처럼 공식 API가 없는 차트를 크롤링할 때는 해당 사이트 이용약관과 `robots.txt`를 확인하세요.
+> ⚠️ API 키는 브라우저 코드(`index.html`/`data.js`)에 직접 넣지 마세요.
+> 서버리스 함수(`/api/youtube.js`)가 서버에서만 키를 읽습니다.
 
 ---
 
@@ -70,7 +71,8 @@ web/
 ├── data.js           # 샘플/폴백 차트 데이터
 ├── vercel.json       # Vercel 배포 설정
 ├── api/
-│   ├── youtube.js    # 유튜브 뮤직 실시간 (YOUTUBE_API_KEY 필요)
-│   └── boxoffice.js  # 박스오피스 실시간 (TMDB_API_KEY 필요)
+│   ├── music.js      # 인기 음악 실시간 (Apple, 키 불필요)
+│   ├── movies.js     # 인기 영화 실시간 (Apple, 키 불필요)
+│   └── youtube.js    # 유튜브 뮤직 실시간 (YOUTUBE_API_KEY 필요)
 └── README.md         # 이 문서
 ```

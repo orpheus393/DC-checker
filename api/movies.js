@@ -40,11 +40,12 @@ function parseChart(html) {
     const rank = cleanNum(stripTags(cells[0]));
     if (!rank) continue;
 
-    // 행의 첫 a-link-normal = 영화 제목 링크
-    const tm = block.match(/class="a-link-normal"[^>]*href="([^"]+)"[^>]*>([^<]+)</);
+    // 영화 링크(/release/ 또는 /title/)만 제목으로 인정.
+    // → 날짜(/weekend/)·배급사(/distributor/) 링크에 속지 않음.
+    const tm = block.match(/href="(\/(?:release|title)\/[^"]+)"[^>]*>([^<]+)</);
     if (!tm) continue;
     const title = decode(tm[2]);
-    if (!title || /^\d/.test(title)) continue;            // 날짜/숫자 링크 제외
+    if (!title) continue;
     const link = "https://www.boxofficemojo.com" + tm[1].split("?")[0];
 
     const money = cells.map(stripTags).filter((v) => /^\$/.test(v));

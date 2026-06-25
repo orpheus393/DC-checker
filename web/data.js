@@ -20,14 +20,19 @@ const CHARTS = {
   },
 
   movies: {
-    title: "인기 영화",
+    title: "미국 박스오피스",
     meta: "샘플 · 실시간 연결 실패 시 표시",
     items: [
-      { title: "별의 계승자",     sub: "SF",        emoji: "🎬", change: 0 },
-      { title: "한겨울의 약속",   sub: "드라마",    emoji: "🎬", change: 1 },
-      { title: "추격: 마지막 밤", sub: "범죄",      emoji: "🎬", change: -1 },
-      { title: "고양이 탐정단",   sub: "애니메이션", emoji: "🎬", change: "new" },
-      { title: "붉은 사막",       sub: "액션",      emoji: "🎬", change: 2 },
+      { title: "Starbound",        sub: "주말 매출 $48.2M", emoji: "🎬", change: 0,
+        meta: [{ k: "주말 매출", v: "$48.2M" }, { k: "누적 매출", v: "$152.0M" }] },
+      { title: "The Last Echo",    sub: "주말 매출 $31.5M", emoji: "🎬", change: 1,
+        meta: [{ k: "주말 매출", v: "$31.5M" }, { k: "누적 매출", v: "$98.4M" }] },
+      { title: "Midnight Harbor",  sub: "주말 매출 $22.0M", emoji: "🎬", change: -1,
+        meta: [{ k: "주말 매출", v: "$22.0M" }] },
+      { title: "Paper Tigers",     sub: "주말 매출 $14.7M", emoji: "🎬", change: "new",
+        meta: [{ k: "주말 매출", v: "$14.7M" }] },
+      { title: "Crimson Desert",   sub: "주말 매출 $9.3M",  emoji: "🎬", change: 2,
+        meta: [{ k: "주말 매출", v: "$9.3M" }] },
     ],
   },
 

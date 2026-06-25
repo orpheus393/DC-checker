@@ -204,7 +204,7 @@
 
     <nav class="tabs" role="tablist" aria-label="차트 종류">
       <button class="tab" role="tab" aria-selected="true"  data-chart="music">🎵 인기 음악</button>
-      <button class="tab" role="tab" aria-selected="false" data-chart="movies">🎬 인기 영화</button>
+      <button class="tab" role="tab" aria-selected="false" data-chart="movies">🎬 미국 박스오피스</button>
       <button class="tab" role="tab" aria-selected="false" data-chart="youtube">▶️ 유튜브 뮤직</button>
       <button class="tab" role="tab" aria-selected="false" data-chart="billboard">🏆 빌보드</button>
     </nav>
@@ -221,8 +221,10 @@
     <div class="list" id="list" role="tabpanel" aria-live="polite"></div>
 
     <div class="note">
-      💡 항목을 <b>클릭</b>하면 아티스트·발매일·장르·설명 등 <b>상세 정보</b>가 떠요.
-      🎵 음악·🎬 영화·▶️ 유튜브는 실시간, 🏆 빌보드는 공식 API가 없어 샘플입니다.
+      💡 항목을 <b>클릭</b>하면 상세 정보가 떠요. 출처 —
+      🎵 <b>Apple Music</b> 인기곡 · 🎬 <b>Box Office Mojo</b> 미국 주말 박스오피스 ·
+      ▶️ <b>YouTube</b> 공식 API · 🏆 <b>빌보드 HOT 100</b> 공개 데이터셋.
+      (외부 소스가 막히면 자동으로 샘플로 표시됩니다.)
     </div>
 
     <footer>© 2026 CHART WORLD · 프로토타입</footer>
@@ -271,28 +273,23 @@
         })),
       }),
     },
-    movies: {
-      direct: 'https://itunes.apple.com/kr/rss/topmovies/limit=10/json',
-      proxy:  '/api/movies',
+    movies: { proxy: '/api/movies' },   // 서버에서 Box Office Mojo 스크래핑 (브라우저 직접 호출 불가)
+    youtube: { proxy: '/api/youtube' },   // 키 필요, 미설정 시 샘플
+    billboard: {
+      direct: 'https://raw.githubusercontent.com/mhollingshead/billboard-hot-100/main/recent.json',
+      proxy:  '/api/billboard',
       parse: (d) => ({
-        title: '인기 영화', meta: '실시간 · Apple',
-        items: (d.feed?.entry || []).map((e) => {
-          const imgs = e['im:image'] || [];
-          return {
-            title: e['im:name']?.label || '', sub: e['im:artist']?.label || '영화',
-            image: imgs[imgs.length - 1]?.label, link: e.link?.attributes?.href,
-            linkLabel: 'Apple에서 보기', desc: e.summary?.label || '', emoji: '🎬', change: 0,
-            meta: [
-              e.category?.attributes?.label && { k: '장르', v: e.category.attributes.label },
-              e['im:releaseDate']?.attributes?.label && { k: '개봉', v: e['im:releaseDate'].attributes.label },
-              e['im:price']?.label && { k: '가격', v: e['im:price'].label },
-            ].filter(Boolean),
-          };
-        }),
+        title: '빌보드 HOT 100', meta: '실시간 · ' + (d.date || ''),
+        items: (d.data || []).slice(0, 10).map((s) => ({
+          title: s.song, sub: s.artist, emoji: '🏆',
+          change: s.last_week == null ? 'new' : (s.last_week - s.this_week),
+          meta: [
+            s.peak_position && { k: '최고순위', v: s.peak_position + '위' },
+            s.weeks_on_chart && { k: '차트인', v: s.weeks_on_chart + '주' },
+          ].filter(Boolean),
+        })),
       }),
     },
-    youtube: { proxy: '/api/youtube' },   // 키 필요, 미설정 시 샘플
-    // billboard: 실시간 소스 없음 → 샘플
   };
 
   function changeBadge(c) {

@@ -1,7 +1,9 @@
-// /api/movies — 미국 주말 박스오피스 (Box Office Mojo 스크래핑, 키 불필요)
+// /api/movies — 미국 주말 박스오피스 (Box Office Mojo, 키 불필요)
 //
-// 공식 무료 API가 없어 Box Office Mojo 주말 차트 HTML을 서버에서 파싱합니다.
-// 사이트 구조가 바뀌거나 접근이 막히면 502 → 화면이 샘플로 폴백합니다.
+// 1) /weekend/ 인덱스에서 가장 최근 주말 ID(예: 2025W25)를 찾고
+// 2) 그 주말 상세 페이지의 영화 차트를 파싱한다.
+// BOM이 서버 IP를 막을 수 있어 직접 → 공개 중계 프록시 순으로 받아온다(키 불필요).
+// 사이트 구조 변경/차단 시 502 → 화면이 샘플로 폴백.
 
 const cleanNum = (s) => Number(String(s).replace(/[^0-9]/g, "")) || 0;
 const stripTags = (h) => h.replace(/<[^>]*>/g, "").trim();
@@ -9,17 +11,13 @@ const decode = (s) =>
   s.replace(/&amp;/g, "&").replace(/&#0?39;/g, "'").replace(/&quot;/g, '"')
    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
 
-export default async function handler(req, res) {
-  const BOM = "https://www.boxofficemojo.com/weekend/";
-  // BOM이 서버 IP를 막을 수 있어, 직접 → 공개 중계 프록시 순으로 시도.
-  // (프록시가 BOM을 대신 받아오므로 차단을 우회. 모두 키 불필요)
+// 직접 + 중계 프록시(원문 HTML 반환) 순으로 시도
+async function fetchHtml(target) {
   const attempts = [
-    BOM,
-    "https://api.allorigins.win/raw?url=" + encodeURIComponent(BOM),
-    "https://corsproxy.io/?url=" + encodeURIComponent(BOM),
-    "https://r.jina.ai/" + BOM,
+    target,
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(target),
+    "https://corsproxy.io/?url=" + encodeURIComponent(target),
   ];
-
   for (const url of attempts) {
     try {
       const r = await fetch(url, {
@@ -27,28 +25,26 @@ export default async function handler(req, res) {
         signal: AbortSignal.timeout(9000),
       });
       if (!r.ok) continue;
-      const html = await r.text();
-      const items = parseBOM(html);
-      if (items.length) {
-        res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=21600");
-        return res.status(200).json({ title: "미국 박스오피스", meta: "실시간 · Box Office Mojo (주말)", items });
-      }
-    } catch (e) { /* 다음 방법 시도 */ }
+      const t = await r.text();
+      if (t && t.length > 1000) return t;
+    } catch (e) { /* 다음 방법 */ }
   }
-  return res.status(502).json({ error: "박스오피스 데이터를 가져오지 못했습니다" });
+  throw new Error("fetch 실패: " + target);
 }
 
-function parseBOM(html) {
+function parseChart(html) {
   const items = [];
   for (const block of html.split("<tr").slice(1)) {
     const cells = [...block.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
-    if (cells.length < 4) continue;                  // 헤더/빈 행 건너뜀
+    if (cells.length < 5) continue;                       // 차트 행만
     const rank = cleanNum(stripTags(cells[0]));
     if (!rank) continue;
 
+    // 행의 첫 a-link-normal = 영화 제목 링크
     const tm = block.match(/class="a-link-normal"[^>]*href="([^"]+)"[^>]*>([^<]+)</);
     if (!tm) continue;
     const title = decode(tm[2]);
+    if (!title || /^\d/.test(title)) continue;            // 날짜/숫자 링크 제외
     const link = "https://www.boxofficemojo.com" + tm[1].split("?")[0];
 
     const money = cells.map(stripTags).filter((v) => /^\$/.test(v));
@@ -57,7 +53,7 @@ function parseBOM(html) {
 
     items.push({
       title,
-      sub: weekend ? `주말 매출 ${weekend}` : "박스오피스",
+      sub: weekend ? `주말 매출 ${weekend}` : `${rank}위`,
       link,
       linkLabel: "Box Office Mojo에서 보기",
       emoji: "🎬",
@@ -71,4 +67,25 @@ function parseBOM(html) {
     if (items.length >= 10) break;
   }
   return items;
+}
+
+export default async function handler(req, res) {
+  try {
+    // 1) 최근 주말 ID 찾기
+    const index = await fetchHtml("https://www.boxofficemojo.com/weekend/");
+    const m = index.match(/\/weekend\/(\d{4}W\d{1,2})\//);
+    const chartUrl = m
+      ? `https://www.boxofficemojo.com/weekend/${m[1]}/`
+      : "https://www.boxofficemojo.com/weekend/";
+
+    // 2) 해당 주말의 영화 차트 파싱
+    const html = await fetchHtml(chartUrl);
+    const items = parseChart(html);
+    if (!items.length) throw new Error("파싱 결과 없음");
+
+    res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=21600");
+    return res.status(200).json({ title: "미국 박스오피스", meta: "실시간 · Box Office Mojo (주말)", items });
+  } catch (e) {
+    return res.status(502).json({ error: String(e) });
+  }
 }

@@ -4,19 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>차트월드 · 영화·음악·세상의 모든 순위</title>
-<meta name="description" content="빌보드, 박스오피스, 유튜브 뮤직 등 세상의 모든 차트를 한눈에." />
+<meta name="description" content="빌보드, 박스오피스, 유튜브 뮤직 등 세상의 모든 차트와 정보를 한눈에." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --ink:        #14101d;   /* 딥 잉크(자줏빛 한 방울) */
+    --ink:        #14101d;
     --ink-soft:   #1e1830;
     --card:       #241d39;
     --line:       #3a3155;
     --text:       #f3effa;
     --muted:      #a79bc4;
-    --gold:       #f5c451;   /* 스포트라이트 골드 */
+    --gold:       #f5c451;
     --gold-deep:  #d99a2b;
     --up:         #4ad6a0;
     --down:       #ff6b81;
@@ -38,166 +38,168 @@
 
   .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
 
-  /* ── 헤더 ── */
   header { text-align: center; padding: 56px 0 28px; }
   .brand {
     font-family: 'Bebas Neue', sans-serif;
     font-size: clamp(48px, 11vw, 92px);
-    line-height: 0.92;
-    letter-spacing: 2px;
+    line-height: 0.92; letter-spacing: 2px;
     background: linear-gradient(180deg, #fff 0%, var(--gold) 130%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
     text-wrap: balance;
   }
-  .tagline {
-    margin-top: 10px;
-    color: var(--muted);
-    font-size: 15px;
-    letter-spacing: 0.5px;
-  }
+  .tagline { margin-top: 10px; color: var(--muted); font-size: 15px; letter-spacing: 0.5px; }
 
-  /* ── 탭 ── */
   .tabs {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin: 28px 0 8px;
-    position: sticky;
-    top: 0;
-    padding: 14px 0;
-    background: linear-gradient(180deg, var(--ink) 70%, transparent);
-    z-index: 10;
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin: 28px 0 8px; position: sticky; top: 0; padding: 14px 0;
+    background: linear-gradient(180deg, var(--ink) 70%, transparent); z-index: 10;
   }
   .tab {
-    border: 1px solid var(--line);
-    background: transparent;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 700;
-    padding: 10px 18px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: all 0.18s ease;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    padding: 10px 18px; border-radius: 999px; cursor: pointer; transition: all 0.18s ease;
   }
   .tab:hover { color: var(--text); border-color: var(--gold-deep); }
-  .tab[aria-selected="true"] {
-    background: var(--gold);
-    border-color: var(--gold);
-    color: #2a1d05;
-  }
+  .tab[aria-selected="true"] { background: var(--gold); border-color: var(--gold); color: #2a1d05; }
   .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-  /* ── 차트 헤더 ── */
   .chart-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 18px 4px 14px;
-    flex-wrap: wrap;
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin: 18px 4px 14px; flex-wrap: wrap;
   }
   .chart-title { font-size: 22px; font-weight: 900; }
   .chart-meta { font-size: 13px; color: var(--muted); }
 
+  /* ── 1위 스포트라이트 ── */
+  .hero {
+    display: grid; grid-template-columns: 132px 1fr; gap: 20px;
+    background:
+      radial-gradient(420px 200px at 0% 0%, rgba(245,196,81,0.16), transparent 70%),
+      var(--card);
+    border: 1px solid var(--gold-deep); border-radius: 20px;
+    padding: 20px; margin-bottom: 18px; cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .hero:hover { transform: translateY(-2px); }
+  .hero-art {
+    width: 132px; height: 132px; border-radius: 14px; object-fit: cover;
+    background: linear-gradient(135deg, var(--ink-soft), var(--line));
+    display: grid; place-items: center; font-size: 48px;
+  }
+  .hero-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: 1.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-title { font-size: 26px; font-weight: 900; line-height: 1.15; text-wrap: balance; }
+  .hero-sub { font-size: 15px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip {
+    font-size: 12px; color: var(--text); background: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  }
+  .chip b { color: var(--gold); font-weight: 700; }
+  .hero-desc {
+    font-size: 13px; color: var(--muted); line-height: 1.55; margin-top: 4px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .cta {
+    align-self: flex-start; margin-top: 8px; text-decoration: none;
+    font-size: 13px; font-weight: 700; color: #2a1d05; background: var(--gold);
+    padding: 8px 16px; border-radius: 999px; transition: opacity 0.15s ease;
+  }
+  .cta:hover { opacity: 0.88; }
+
   /* ── 순위 리스트 ── */
   .list { display: flex; flex-direction: column; gap: 10px; }
   .row {
-    display: grid;
-    grid-template-columns: 56px 56px 1fr auto;
-    align-items: center;
-    gap: 14px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 12px 16px;
+    display: grid; grid-template-columns: 48px 52px 1fr auto; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 16px; cursor: pointer;
     transition: transform 0.15s ease, border-color 0.15s ease;
   }
   .row:hover { transform: translateY(-2px); border-color: var(--gold-deep); }
-
   .rank {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 34px;
-    line-height: 1;
-    color: var(--gold);
-    text-align: center;
-    font-variant-numeric: tabular-nums;
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1;
+    color: var(--gold); text-align: center; font-variant-numeric: tabular-nums;
   }
-  .row:nth-child(1) .rank,
-  .row:nth-child(2) .rank,
-  .row:nth-child(3) .rank { font-size: 42px; }
-
   .art {
-    width: 56px; height: 56px;
-    border-radius: 10px;
-    object-fit: cover;
+    width: 52px; height: 52px; border-radius: 10px; object-fit: cover;
     background: linear-gradient(135deg, var(--ink-soft), var(--line));
-    display: grid; place-items: center;
-    font-size: 22px;
+    display: grid; place-items: center; font-size: 22px;
   }
-
   .info { min-width: 0; }
-  .title {
-    font-weight: 700; font-size: 16px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .sub { font-size: 13px; color: var(--muted); margin-top: 2px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
+  .title { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .change {
-    font-size: 13px; font-weight: 700;
-    display: flex; align-items: center; gap: 4px;
-    font-variant-numeric: tabular-nums;
-    min-width: 48px; justify-content: flex-end;
+    font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 4px;
+    font-variant-numeric: tabular-nums; min-width: 48px; justify-content: flex-end;
   }
-  .up   { color: var(--up); }
-  .down { color: var(--down); }
-  .flat { color: var(--flat); }
-  .new  { color: #2a1d05; background: var(--gold); padding: 2px 8px; border-radius: 6px; font-size: 11px; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); }
+  .new { color: #2a1d05; background: var(--gold); padding: 2px 8px; border-radius: 6px; font-size: 11px; }
 
-  /* 데이터 출처 배지 */
-  .badge {
-    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
-    letter-spacing: 0.3px; white-space: nowrap;
-  }
-  .badge.live   { color: #06281c; background: var(--up); }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.3px; white-space: nowrap; }
+  .badge.live { color: #06281c; background: var(--up); }
   .badge.sample { color: var(--muted); background: var(--ink-soft); border: 1px solid var(--line); }
   .loading { text-align: center; color: var(--muted); padding: 40px 0; }
 
-  /* ── 안내 배너 ── */
   .note {
-    margin: 22px 4px 0;
-    font-size: 13px;
-    color: var(--muted);
-    background: var(--ink-soft);
-    border: 1px dashed var(--line);
-    border-radius: 12px;
-    padding: 14px 16px;
-    line-height: 1.6;
+    margin: 22px 4px 0; font-size: 13px; color: var(--muted);
+    background: var(--ink-soft); border: 1px dashed var(--line); border-radius: 12px;
+    padding: 14px 16px; line-height: 1.6;
   }
   .note b { color: var(--gold); }
-
   footer { text-align: center; color: var(--flat); font-size: 12px; margin-top: 40px; }
 
-  @media (max-width: 520px) {
-    .row { grid-template-columns: 44px 44px 1fr auto; gap: 10px; padding: 10px 12px; }
-    .art { width: 44px; height: 44px; }
-    .rank { font-size: 28px; }
+  /* ── 상세 정보 모달 ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(8,5,16,0.74); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100;
   }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+    max-width: 520px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--ink-soft); color: var(--text);
+    font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { border-color: var(--gold-deep); }
+  .modal-head { display: flex; gap: 16px; align-items: flex-start; }
+  .modal-art {
+    width: 96px; height: 96px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--ink-soft), var(--line));
+    display: grid; place-items: center; font-size: 40px;
+  }
+  .modal-rank { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--gold); }
+  .modal-title { font-size: 22px; font-weight: 900; line-height: 1.2; margin-top: 2px; text-wrap: balance; }
+  .modal-sub { font-size: 14px; color: var(--muted); margin-top: 4px; }
+  .modal-meta { display: flex; flex-direction: column; gap: 8px; margin: 18px 0; }
+  .meta-row { display: flex; gap: 12px; font-size: 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .meta-row .k { color: var(--muted); min-width: 72px; }
+  .meta-row .v { color: var(--text); font-weight: 500; }
+  .modal-desc { font-size: 14px; color: var(--muted); line-height: 1.65; white-space: pre-line; }
+  .modal .cta { display: inline-block; margin-top: 18px; }
 
-  @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; }
+  @media (max-width: 540px) {
+    .hero { grid-template-columns: 96px 1fr; gap: 14px; padding: 16px; }
+    .hero-art { width: 96px; height: 96px; font-size: 36px; }
+    .hero-title { font-size: 21px; }
+    .row { grid-template-columns: 38px 46px 1fr auto; gap: 10px; padding: 10px 12px; }
+    .art { width: 46px; height: 46px; }
+    .rank { font-size: 26px; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1 class="brand">CHART&nbsp;WORLD</h1>
-      <p class="tagline">영화 · 음악 · 세상의 모든 순위를 한눈에</p>
+      <p class="tagline">영화 · 음악 · 세상의 순위와 정보를 한눈에</p>
     </header>
 
     <nav class="tabs" role="tablist" aria-label="차트 종류">
@@ -215,37 +217,58 @@
       </div>
     </div>
 
+    <div id="hero"></div>
     <div class="list" id="list" role="tabpanel" aria-live="polite"></div>
 
     <div class="note">
-      🎵 <b>인기 음악</b>·🎬 <b>인기 영화</b>는 <b>키 없이</b> Apple 공개 차트에서 실시간으로 불러와요
-      (배지가 <b>실시간</b>이면 성공). 혹시 <b>샘플</b>로 보이면 브라우저 보안(CORS) 때문이며,
-      클라우드에 배포하면 서버가 대신 가져와 항상 실시간으로 표시됩니다.
-      ▶️ 유튜브는 무료 API 키, 🏆 빌보드는 공식 API가 없어 샘플로 둡니다. (자세한 내용 <b>README.md</b>)
+      💡 항목을 <b>클릭</b>하면 아티스트·발매일·장르·설명 등 <b>상세 정보</b>가 떠요.
+      🎵 음악·🎬 영화·▶️ 유튜브는 실시간, 🏆 빌보드는 공식 API가 없어 샘플입니다.
     </div>
 
     <footer>© 2026 CHART WORLD · 프로토타입</footer>
   </div>
 
+  <!-- 상세 정보 모달 -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="modal" id="modal">
+      <button class="modal-close" id="modalClose" aria-label="닫기">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
 <script src="data.js"></script>
 <script>
   const list = document.getElementById('list');
+  const heroEl = document.getElementById('hero');
   const titleEl = document.getElementById('chartTitle');
   const metaEl = document.getElementById('chartMeta');
   const badge = document.getElementById('srcBadge');
+  const overlay = document.getElementById('overlay');
+  const modalContent = document.getElementById('modalContent');
   const tabs = [...document.querySelectorAll('.tab')];
+  let current = [];   // 현재 표시 중인 항목들 (모달 참조용)
 
-  // 차트별 실시간 데이터 소스.
-  //  direct = 브라우저에서 바로 호출(키 불필요). 막히면(CORS) proxy로 폴백.
-  //  proxy  = 서버리스 함수(배포 시 동작). 둘 다 실패하면 data.js 샘플.
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // 앨범아트를 더 크게 (Apple URL의 100x100 → 600x600)
+  const bigImg = (u) => u ? u.replace(/\/\d+x\d+bb/, '/600x600bb') : u;
+
+  // ── 데이터 소스 & 가공 (브라우저 직접 호출용) ──────────
   const SOURCES = {
     music: {
       direct: 'https://rss.marketingtools.apple.com/api/v2/kr/music/most-played/25/songs.json',
       proxy:  '/api/music',
       parse: (d) => ({
         title: '글로벌 인기 음악', meta: '실시간 · Apple Music',
-        items: (d.feed?.results || []).slice(0, 10)
-          .map((s) => ({ title: s.name, sub: s.artistName, emoji: '🎵', change: 0 })),
+        items: (d.feed?.results || []).slice(0, 10).map((s) => ({
+          title: s.name, sub: s.artistName, image: s.artworkUrl100,
+          link: s.url, linkLabel: 'Apple Music에서 보기', emoji: '🎵', change: 0,
+          meta: [
+            (s.genres || []).map(g => g.genreName).filter(n => n !== 'Music')[0] && { k: '장르', v: (s.genres || []).map(g => g.genreName).filter(n => n !== 'Music')[0] },
+            s.releaseDate && { k: '발매일', v: s.releaseDate },
+          ].filter(Boolean),
+        })),
       }),
     },
     movies: {
@@ -253,12 +276,23 @@
       proxy:  '/api/movies',
       parse: (d) => ({
         title: '인기 영화', meta: '실시간 · Apple',
-        items: (d.feed?.entry || [])
-          .map((e) => ({ title: e['im:name']?.label || '', sub: e['im:artist']?.label || '영화', emoji: '🎬', change: 0 })),
+        items: (d.feed?.entry || []).map((e) => {
+          const imgs = e['im:image'] || [];
+          return {
+            title: e['im:name']?.label || '', sub: e['im:artist']?.label || '영화',
+            image: imgs[imgs.length - 1]?.label, link: e.link?.attributes?.href,
+            linkLabel: 'Apple에서 보기', desc: e.summary?.label || '', emoji: '🎬', change: 0,
+            meta: [
+              e.category?.attributes?.label && { k: '장르', v: e.category.attributes.label },
+              e['im:releaseDate']?.attributes?.label && { k: '개봉', v: e['im:releaseDate'].attributes.label },
+              e['im:price']?.label && { k: '가격', v: e['im:price'].label },
+            ].filter(Boolean),
+          };
+        }),
       }),
     },
-    youtube: { proxy: '/api/youtube' },  // 키 필요. 미설정 시 샘플.
-    // billboard: 실시간 소스 없음 → 항상 샘플.
+    youtube: { proxy: '/api/youtube' },   // 키 필요, 미설정 시 샘플
+    // billboard: 실시간 소스 없음 → 샘플
   };
 
   function changeBadge(c) {
@@ -268,51 +302,109 @@
     return `<span class="change down">▼ ${Math.abs(c)}</span>`;
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"]/g, c =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function artHtml(it, cls, big) {
+    const src = big ? bigImg(it.image) : it.image;
+    return src
+      ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls}',textContent:'${it.emoji || '🎶'}'}))">`
+      : `<div class="${cls}">${it.emoji || '🎶'}</div>`;
+  }
+
+  function chipsHtml(it) {
+    return (it.meta || []).map(m => `<span class="chip"><b>${esc(m.k)}</b> ${esc(m.v)}</span>`).join('');
   }
 
   function paint(data, isLive) {
+    current = data.items;
     titleEl.textContent = data.title;
     metaEl.textContent = data.meta;
     badge.textContent = isLive ? '실시간' : '샘플';
     badge.className = 'badge ' + (isLive ? 'live' : 'sample');
-    list.innerHTML = data.items.map((it, i) => `
-      <div class="row">
-        <div class="rank">${i + 1}</div>
-        <div class="art">${it.emoji || '🎶'}</div>
-        <div class="info">
-          <div class="title">${escapeHtml(it.title)}</div>
-          <div class="sub">${escapeHtml(it.sub)}</div>
+
+    // 1위 스포트라이트
+    const top = data.items[0];
+    heroEl.innerHTML = top ? `
+      <div class="hero" data-i="0">
+        ${artHtml(top, 'hero-art', true)}
+        <div class="hero-body">
+          <div class="eyebrow">★ 이번 주 1위 ${changeBadge(top.change)}</div>
+          <div class="hero-title">${esc(top.title)}</div>
+          <div class="hero-sub">${esc(top.sub)}</div>
+          <div class="chips">${chipsHtml(top)}</div>
+          ${top.desc ? `<div class="hero-desc">${esc(top.desc)}</div>` : ''}
+          ${top.link ? `<a class="cta" href="${esc(top.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(top.linkLabel || '자세히 보기')} ↗</a>` : '<span class="hero-desc">눌러서 상세 정보 보기</span>'}
         </div>
-        ${changeBadge(it.change)}
-      </div>
-    `).join('');
+      </div>` : '';
+
+    // 2위 이하 목록
+    list.innerHTML = data.items.slice(1).map((it, idx) => {
+      const i = idx + 1;
+      return `
+        <div class="row" data-i="${i}">
+          <div class="rank">${i + 1}</div>
+          ${artHtml(it, 'art', false)}
+          <div class="info">
+            <div class="title">${esc(it.title)}</div>
+            <div class="sub">${esc(it.sub)}</div>
+          </div>
+          ${changeBadge(it.change)}
+        </div>`;
+    }).join('');
   }
 
+  // ── 상세 모달 ──────────────────────────────
+  function openModal(i) {
+    const it = current[i];
+    if (!it) return;
+    const metaRows = (it.meta || []).map(m =>
+      `<div class="meta-row"><span class="k">${esc(m.k)}</span><span class="v">${esc(m.v)}</span></div>`).join('');
+    modalContent.innerHTML = `
+      <div class="modal-head">
+        ${artHtml(it, 'modal-art', true)}
+        <div>
+          <div class="modal-rank">${i + 1}위 ${it.change === 'new' ? '· 신규' : ''}</div>
+          <div class="modal-title" id="mTitle">${esc(it.title)}</div>
+          <div class="modal-sub">${esc(it.sub)}</div>
+        </div>
+      </div>
+      ${metaRows ? `<div class="modal-meta">${metaRows}</div>` : '<div style="height:8px"></div>'}
+      ${it.desc ? `<div class="modal-desc">${esc(it.desc)}</div>` : ''}
+      ${it.link ? `<a class="cta" href="${esc(it.link)}" target="_blank" rel="noopener">${esc(it.linkLabel || '자세히 보기')} ↗</a>` : ''}
+    `;
+    overlay.classList.add('open');
+    document.getElementById('modalClose').focus();
+  }
+  function closeModal() { overlay.classList.remove('open'); }
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  // 항목 클릭 → 모달 (hero, list 공통)
+  [heroEl, list].forEach(container =>
+    container.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-i]');
+      if (el) openModal(Number(el.dataset.i));
+    }));
+
+  // ── 데이터 로드 ────────────────────────────
   async function tryJson(url, parse) {
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const raw = await r.json();
-    const data = parse ? parse(raw) : raw;   // proxy는 이미 가공된 형태
+    const data = parse ? parse(raw) : raw;
     if (!data.items || !data.items.length) throw new Error('empty');
     return data;
   }
 
   async function render(key) {
     const src = SOURCES[key];
+    heroEl.innerHTML = '';
     if (src) {
       list.innerHTML = '<div class="loading">불러오는 중…</div>';
-      // 1) 브라우저에서 직접(키 불필요)  2) 실패 시 서버 프록시
-      if (src.direct) {
-        try { return paint(await tryJson(src.direct, src.parse), true); } catch (e) {}
-      }
-      if (src.proxy) {
-        try { return paint(await tryJson(src.proxy), true); } catch (e) {}  // 프록시는 이미 가공됨
-      }
+      if (src.direct) { try { return paint(await tryJson(src.direct, src.parse), true); } catch (e) {} }
+      if (src.proxy)  { try { return paint(await tryJson(src.proxy), true); } catch (e) {} }
     }
-    paint(CHARTS[key], false);   // 최종 폴백: 샘플
+    paint(CHARTS[key], false);
   }
 
   tabs.forEach(tab => {

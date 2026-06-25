@@ -20,12 +20,21 @@ async function viaOfficial(key) {
   if (!r.ok) throw new Error("YouTube API " + r.status);
   const data = await r.json();
   return (data.items || []).map((v) => {
-    const views = Number(v.statistics?.viewCount || 0);
+    const sn = v.snippet, st = v.statistics || {};
     return {
-      title: v.snippet.title,
-      sub: `${v.snippet.channelTitle} · 조회수 ${views.toLocaleString("ko-KR")}`,
+      title: sn.title,
+      sub: sn.channelTitle,
+      image: sn.thumbnails?.medium?.url || sn.thumbnails?.default?.url,
+      link: "https://www.youtube.com/watch?v=" + v.id,
+      linkLabel: "유튜브에서 보기",
+      desc: (sn.description || "").slice(0, 300),
       emoji: "▶️",
       change: 0,
+      meta: [
+        st.viewCount && { k: "조회수", v: Number(st.viewCount).toLocaleString("ko-KR") + "회" },
+        st.likeCount && { k: "좋아요", v: Number(st.likeCount).toLocaleString("ko-KR") },
+        sn.publishedAt && { k: "게시일", v: sn.publishedAt.slice(0, 10) },
+      ].filter(Boolean),
     };
   });
 }
@@ -51,9 +60,17 @@ async function viaMirror() {
       if (!Array.isArray(arr) || !arr.length) continue;
       return arr.slice(0, 10).map((v) => ({
         title: v.title,
-        sub: `${v.author || ""} · 조회수 ${Number(v.viewCount || 0).toLocaleString("ko-KR")}`,
+        sub: v.author || "",
+        image: (v.videoThumbnails || []).find((t) => t.quality === "medium")?.url
+          || (v.videoThumbnails || [])[0]?.url,
+        link: "https://www.youtube.com/watch?v=" + v.videoId,
+        linkLabel: "유튜브에서 보기",
+        desc: (v.description || "").slice(0, 300),
         emoji: "▶️",
         change: 0,
+        meta: [
+          v.viewCount && { k: "조회수", v: Number(v.viewCount).toLocaleString("ko-KR") + "회" },
+        ].filter(Boolean),
       }));
     } catch (e) { /* 다음 미러 시도 */ }
   }

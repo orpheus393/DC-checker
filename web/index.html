@@ -184,6 +184,20 @@
   .modal-desc { font-size: 14px; color: var(--muted); line-height: 1.65; white-space: pre-line; }
   .modal .cta { display: inline-block; margin-top: 18px; }
 
+  /* 관련 소식 (네이버 검색) */
+  .relnews { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .relnews h4 { font-size: 13px; color: var(--gold); letter-spacing: 0.5px; margin-bottom: 12px; }
+  .relnews .hint { font-size: 13px; color: var(--flat); line-height: 1.6; }
+  .news-item { display: block; text-decoration: none; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .news-item:last-child { border-bottom: 0; }
+  .news-item .nt { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.4; }
+  .news-item:hover .nt { color: var(--gold); }
+  .news-item .nd { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .news-item .nm { font-size: 11px; color: var(--flat); margin-top: 4px; }
+  .news-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+    background: var(--ink-soft); border: 1px solid var(--line); color: var(--muted); margin-right: 6px; }
+
   @media (max-width: 540px) {
     .hero { grid-template-columns: 96px 1fr; gap: 14px; padding: 16px; }
     .hero-art { width: 96px; height: 96px; font-size: 36px; }
@@ -248,7 +262,8 @@
   const overlay = document.getElementById('overlay');
   const modalContent = document.getElementById('modalContent');
   const tabs = [...document.querySelectorAll('.tab')];
-  let current = [];   // 현재 표시 중인 항목들 (모달 참조용)
+  let current = [];        // 현재 표시 중인 항목들 (모달 참조용)
+  let currentKey = 'music';  // 현재 차트 종류 (검색어 구성용)
 
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -366,9 +381,42 @@
       ${metaRows ? `<div class="modal-meta">${metaRows}</div>` : '<div style="height:8px"></div>'}
       ${it.desc ? `<div class="modal-desc">${esc(it.desc)}</div>` : ''}
       ${it.link ? `<a class="cta" href="${esc(it.link)}" target="_blank" rel="noopener">${esc(it.linkLabel || '자세히 보기')} ↗</a>` : ''}
+      <div class="relnews" id="relnews"><h4>📰 왜 화제일까 · 관련 소식</h4><div class="hint">불러오는 중…</div></div>
     `;
     overlay.classList.add('open');
     document.getElementById('modalClose').focus();
+    loadNews(it);
+  }
+
+  // 네이버 검색으로 "관련 소식" 채우기
+  async function newsQuery(it) {
+    // 음악/유튜브는 제목+아티스트, 그 외는 제목만
+    const withArtist = (currentKey === 'music' || currentKey === 'youtube');
+    return (it.title + (withArtist && it.sub ? ' ' + it.sub : '')).trim();
+  }
+  async function loadNews(it) {
+    const box = document.getElementById('relnews');
+    if (!box) return;
+    try {
+      const q = await newsQuery(it);
+      const r = await fetch('/api/naver?q=' + encodeURIComponent(q));
+      if (r.status === 503) {   // 키 미설정
+        box.innerHTML = '<h4>📰 왜 화제일까 · 관련 소식</h4>' +
+          '<div class="hint">네이버 검색 키(NAVER_CLIENT_ID/SECRET)를 설정하면 여기에 관련 뉴스·블로그가 표시돼요.</div>';
+        return;
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      if (!data.items || !data.items.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<h4>📰 왜 화제일까 · 관련 소식</h4>' + data.items.map(n => `
+        <a class="news-item" href="${esc(n.link)}" target="_blank" rel="noopener">
+          <div class="nt"><span class="news-tag">${esc(n.type)}</span>${esc(n.title)}</div>
+          ${n.desc ? `<div class="nd">${esc(n.desc)}</div>` : ''}
+          <div class="nm">${esc(n.source || '')}${n.source && n.date ? ' · ' : ''}${esc(n.date || '')}</div>
+        </a>`).join('');
+    } catch (e) {
+      box.innerHTML = '';   // 실패 시 조용히 숨김
+    }
   }
   function closeModal() { overlay.classList.remove('open'); }
 
@@ -394,6 +442,7 @@
   }
 
   async function render(key) {
+    currentKey = key;
     const src = SOURCES[key];
     heroEl.innerHTML = '';
     if (src) {
